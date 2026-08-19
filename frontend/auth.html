@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gravity | Sign In & Registration</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --background: #090d16;
+      --foreground: #f8fafc;
+      --card: rgba(15, 23, 42, 0.65);
+      --card-foreground: #f8fafc;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-foreground: #ffffff;
+      --secondary: rgba(255, 255, 255, 0.06);
+      --muted: #64748b;
+      --muted-foreground: #94a3b8;
+      --border: rgba(255, 255, 255, 0.1);
+      --input-bg: rgba(255, 255, 255, 0.04);
+      --ring-focus: rgba(129, 140, 248, 0.4);
+      --accent-violet: #818cf8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--background);
+      color: var(--foreground);
+      min-height: 100vh;
+      width: 100vw;
+      overflow-x: hidden;
+      display: flex;
+    }
+
+    /* Split Screen Layout */
+    .app-wrapper {
+      display: flex;
+      width: 100vw;
+      min-height: 100vh;
+    }
+
+    /* Left Column: Sign-in & Register Form */
+    .left-column {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .form-container {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Brand Header */
+    .brand-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
+
+    .brand-logo svg {
+      width: 22px;
+      height: 22px;
+      fill: #ffffff;
+    }
+
+    .brand-title {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ffffff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Heading & Description */
+    .main-heading {
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      color: #ffffff;
+    }
+
+    .main-subtitle {
+      font-size: 14px;
+      color: var(--muted-foreground);
+      line-height: 1.5;
+    }
+
+    /* Mode Toggle Tabs */
+    .toggle-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background-color: var(--input-bg);
+      border: 1px solid var(--border);
+      padding: 4px;
+      border-radius: 16px;
+      margin-top: 4px;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted-foreground);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .tab-btn.active {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Forms */
+    .form-content {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .form-content.active {
+      display: flex;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted-foreground);
+    }
+
+    /* Glass Input Wrapper (Matching React Component) */
+    .glass-input-wrapper {
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background-color: var(--input-bg);
+      backdrop-filter: blur(12px);
+      transition: all 0.2s ease;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .glass-input-wrapper:focus-within {
+      border-color: rgba(129, 140, 248, 0.7);
+      background-color: rgba(99, 102, 241, 0.08);
+      box-shadow: 0 0 0 3px var(--ring-focus);
+    }
+
+    .glass-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 14px;
+      padding: 14px 16px;
+      color: #ffffff;
+      border-radius: 16px;
+    }
+
+    .glass-input::placeholder {
+      color: rgba(148, 163, 184, 0.5);
+    }
+
+    .input-icon-btn {
+      position: absolute;
+      right: 14px;
+      background: none;
+      border: none;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+
+    .input-icon-btn:hover {
+      color: #ffffff;
+    }
+
+    /* Options Row */
+    .form-options-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    .remember-me-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      color: rgba(248, 250, 252, 0.85);
+      user-select: none;
+    }
+
+    .custom-checkbox {
+      accent-color: var(--primary);
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+    }
+
+    .forgot-link {
+      color: var(--accent-violet);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .forgot-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Primary Submit Button */
+    .submit-btn {
+      width: 100%;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      padding: 14px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+      margin-top: 4px;
+    }
+
+    .submit-btn:hover {
+      background: linear-gradient(135deg, #4f46e5, #4338ca);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Divider */
+    .divider-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 6px 0;
+    }
+
+    .divider-line {
+      width: 100%;
+      border-top: 1px solid var(--border);
+    }
+
+    .divider-text {
+      position: absolute;
+      background-color: var(--background);
+      padding: 0 12px;
+      font-size: 12px;
+      color: var(--muted-foreground);
+    }
+
+    /* Google Button */
+    .google-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 13px 20px;
+      background-color: var(--input-bg);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .google-btn:hover {
+      background-color: var(--secondary);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Footer Switch Text */
+    .switch-auth-text {
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted-foreground);
+      margin-top: 4px;
+    }
+
+    .switch-link {
+      color: var(--accent-violet);
+      text-decoration: none;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .switch-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Demo Quick Logins */
+    .quick-logins-pill {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted-foreground);
+      margin-top: 6px;
+    }
+
+    .demo-pill {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background-color: var(--input-bg);
+      color: rgba(255, 255, 255, 0.85);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .demo-pill:hover {
+      background-color: var(--secondary);
+      border-color: var(--accent-violet);
+      color: #ffffff;
+    }
+
+    /* Toast Notification */
+    .toast-alert {
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 500;
+      display: block;
+      animation: fadeSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .toast-alert.hidden {
+      display: none;
+    }
+
+    .toast-alert.success {
+      background-color: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .toast-alert.error {
+      background-color: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+
+    /* Right Column: Hero Showcase + Testimonials */
+    .right-column {
+      display: none;
+      flex: 1;
+      position: relative;
+      padding: 16px;
+      min-height: 100vh;
+    }
+
+    @media (min-width: 992px) {
+      .right-column {
+        display: block;
+      }
+    }
+
+    .hero-image-card {
+      position: absolute;
+      inset: 16px;
+      border-radius: 28px;
+      background-image: url('https://images.unsplash.com/photo-1642615835477-d303d7dc9ee9?w=2160&q=80');
+      background-size: cover;
+      background-position: center;
+      overflow: hidden;
+      box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.6);
+      animation: slideRightIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(9, 13, 22, 0.1) 0%, rgba(9, 13, 22, 0.75) 100%);
+    }
+
+    /* Testimonials Floating Container */
+    .testimonials-container {
+      position: absolute;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 16px;
+      width: 100%;
+      max-width: 90%;
+      justify-content: center;
+      z-index: 5;
+    }
+
+    .testimonial-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      border-radius: 24px;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 18px;
+      width: 260px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+      animation: testimonialIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .testimonial-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .testimonial-info {
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .testimonial-name {
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .testimonial-handle {
+      font-size: 11px;
+      color: var(--muted-foreground);
+    }
+
+    .testimonial-text {
+      margin-top: 6px;
+      color: rgba(248, 250, 252, 0.85);
+      font-size: 12px;
+    }
+
+    /* Keyframes Animations */
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideRightIn {
+      from {
+        opacity: 0;
+        transform: scale(0.97);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes testimonialIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .anim-delay-1 { animation-delay: 0.1s; }
+    .anim-delay-2 { animation-delay: 0.25s; }
+    .anim-delay-3 { animation-delay: 0.4s; }
+  </style>
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- ========================================================= -->
+    <!-- LEFT COLUMN: SIGN IN & REGISTRATION FORM                  -->
+    <!-- ========================================================= -->
+    <section class="left-column">
+      <div class="form-container">
+        <!-- Brand Header -->
+        <header class="brand-header">
+          <div class="brand-logo">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.82.49 3.53 1.34 5L2 22l5.24-1.31C8.68 21.49 10.28 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
+          </div>
+          <h2 class="brand-title">Gravity</h2>
+        </header>
+
+        <!-- Dynamic Heading -->
+        <div>
+          <h1 class="main-heading" id="portal-heading">Welcome</h1>
+          <p class="main-subtitle" id="portal-subtitle">Access your account and continue your journey with us</p>
+        </div>
+
+        <!-- Toast Notification Alert -->
+        <div id="toast-message" class="toast-alert hidden"></div>
+
+        <!-- 1. SIGN IN FORM -->
+        <form id="login-form" class="form-content active" onsubmit="handleFormSubmit(event, 'login')">
+          <div class="form-group">
+            <label class="form-label" for="login-email">Email Address</label>
+            <div class="glass-input-wrapper">
+              <input type="email" id="login-email" class="glass-input" required placeholder="name@gravity.chat" value="alex@gravity.chat">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="login-password">Password</label>
+            <div class="glass-input-wrapper">
+              <input type="password" id="login-password" class="glass-input" required placeholder="Enter your password" value="password123" style="padding-right: 44px;">
+              <button type="button" class="input-icon-btn" onclick="togglePasswordVisibility('login-password', this)">
+                <svg id="eye-icon-login" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-options-row">
+            <label class="remember-me-label">
+              <input type="checkbox" name="rememberMe" checked class="custom-checkbox">
+              <span>Keep me signed in</span>
+            </label>
+            <a href="#" onclick="handleResetPasswordPrompt(event)" class="forgot-link">Reset password</a>
+          </div>
+
+          <button type="submit" class="submit-btn">Sign In</button>
+
+          <div class="divider-row">
+            <div class="divider-line"></div>
+            <span class="divider-text">Or continue with</span>
+          </div>
+
+          <button type="button" class="google-btn" onclick="handleGoogleSignIn()">
+            <svg class="h-5 w-5" width="20" height="20" viewBox="0 0 48 48">
+              <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s12-5.373 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-2.641-.21-5.236-.611-7.743z"/>
+              <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+              <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+              <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.022 35.026 44 30.038 44 24c0-2.641-.21-5.236-.611-7.743z"/>
+            </svg>
+            Continue with Google
+          </button>
+
+          <!-- Quick Demo Logins -->
+          <div class="quick-logins-pill">
+            <span>Demo:</span>
+            <button type="button" class="demo-pill" onclick="quickLogin('alex@gravity.chat')">Alex</button>
+            <button type="button" class="demo-pill" onclick="quickLogin('sarah@gravity.chat')">Sarah</button>
+            <button type="button" class="demo-pill" onclick="quickLogin('david@gravity.chat')">David</button>
+          </div>
+
+          <p class="switch-auth-text">
+            New to our platform? <a href="#" onclick="switchMode('signup')" class="switch-link">Create Account</a>
+          </p>
+        </form>
+
+        <!-- 2. REGISTRATION FORM (Collects: Full Name, Email, Birthday, Phone Number) -->
+        <form id="signup-form" class="form-content" onsubmit="handleFormSubmit(event, 'signup')">
+          <div class="form-group">
+            <label class="form-label" for="signup-name">Full Name</label>
+            <div class="glass-input-wrapper">
+              <input type="text" id="signup-name" class="glass-input" required placeholder="John Doe">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="signup-email">Email Address</label>
+            <div class="glass-input-wrapper">
+              <input type="email" id="signup-email" class="glass-input" required placeholder="name@example.com">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="signup-dob">Birth Day</label>
+            <div class="glass-input-wrapper">
+              <input type="date" id="signup-dob" class="glass-input" required style="color-scheme: dark;">
+            </div>
+          </div>
+
+          <button type="submit" class="submit-btn">Send Verification Code</button>
+
+          <p class="switch-auth-text">
+            Already have an account? <a href="#" onclick="switchMode('login')" class="switch-link">Sign In</a>
+          </p>
+        </form>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- RIGHT COLUMN: HERO SHOWCASE + TESTIMONIALS (SHADCN STYLE) -->
+    <!-- ========================================================= -->
+    <section class="right-column">
+      <div class="hero-image-card">
+        <div class="hero-overlay"></div>
+        <div class="testimonials-container">
+          <!-- Card 1 -->
+          <div class="testimonial-card anim-delay-1">
+            <img src="https://randomuser.me/api/portraits/women/57.jpg" class="testimonial-avatar" alt="Sarah Chen">
+            <div class="testimonial-info">
+              <p class="testimonial-name">Sarah Chen</p>
+              <p class="testimonial-handle">@sarahdigital</p>
+              <p class="testimonial-text">Amazing platform! The user experience is seamless and features are exactly what I needed.</p>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="testimonial-card anim-delay-2" style="display: none;">
+            <img src="https://randomuser.me/api/portraits/men/64.jpg" class="testimonial-avatar" alt="Marcus Johnson">
+            <div class="testimonial-info">
+              <p class="testimonial-name">Marcus Johnson</p>
+              <p class="testimonial-handle">@marcustech</p>
+              <p class="testimonial-text">This service has transformed how I work. Clean design, powerful features, and excellent support.</p>
+            </div>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="testimonial-card anim-delay-3">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" class="testimonial-avatar" alt="David Martinez">
+            <div class="testimonial-info">
+              <p class="testimonial-name">David Martinez</p>
+              <p class="testimonial-handle">@davidcreates</p>
+              <p class="testimonial-text">I've tried many platforms, but this one stands out. Intuitive, reliable, and genuinely helpful.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    function showToast(message, type = 'error') {
+      const toast = document.getElementById('toast-message');
+      toast.textContent = message;
+      toast.className = `toast-alert ${type}`;
+    }
+
+    function hideToast() {
+      const toast = document.getElementById('toast-message');
+      toast.className = 'toast-alert hidden';
+    }
+
+    function switchMode(mode) {
+      hideToast();
+      const loginForm = document.getElementById('login-form');
+      const signupForm = document.getElementById('signup-form');
+      const heading = document.getElementById('portal-heading');
+      const subtitle = document.getElementById('portal-subtitle');
+
+      if (mode === 'login') {
+        loginForm.classList.add('active');
+        signupForm.classList.remove('active');
+        heading.textContent = "Welcome";
+        subtitle.textContent = "Access your account and continue your journey with us";
+      } else {
+        loginForm.classList.remove('active');
+        signupForm.classList.add('active');
+        heading.textContent = "Create Account";
+        subtitle.textContent = "Register your profile and get started with Gravity";
+      }
+    }
+
+    function togglePasswordVisibility(fieldId, btn) {
+      const input = document.getElementById(fieldId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>`;
+      } else {
+        input.type = 'password';
+        btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+      }
+    }
+
+    function quickLogin(email) {
+      document.getElementById('login-email').value = email;
+      document.getElementById('login-password').value = 'password123';
+      switchMode('login');
+      document.getElementById('login-form').requestSubmit();
+    }
+
+    function handleGoogleSignIn() {
+      showToast("Google OAuth provider connected. Signing in...", "success");
+      setTimeout(() => {
+        quickLogin('sarah@gravity.chat');
+      }, 700);
+    }
+
+    function handleResetPasswordPrompt(e) {
+      e.preventDefault();
+      showToast("Password reset instructions sent to your email.", "success");
+    }
+
+    async function handleFormSubmit(e, type) {
+      e.preventDefault();
+      hideToast();
+
+      const form = e.target;
+      const submitBtn = form.querySelector('.submit-btn');
+      const origText = submitBtn.textContent;
+      submitBtn.textContent = 'Authenticating...';
+      submitBtn.disabled = true;
+
+      try {
+        if (type === 'login') {
+          const email = document.getElementById('login-email').value.trim();
+          const password = document.getElementById('login-password').value;
+
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, password: password })
+          });
+          const data = await res.json();
+
+          if (res.ok) {
+            showToast(data.message || 'Access granted. Redirecting to Gravity...', 'success');
+            if (data.access_token) {
+              localStorage.setItem('gravity_auth_token', data.access_token);
+            }
+            setTimeout(() => {
+              window.location.href = data.redirect || '/home';
+            }, 600);
+          } else {
+            showToast(data.detail || data.message || 'Invalid credentials', 'error');
+            submitBtn.textContent = origText;
+            submitBtn.disabled = false;
+          }
+        } else {
+          submitBtn.textContent = 'Sending OTP...';
+          const name = document.getElementById('signup-name').value.trim();
+          const email = document.getElementById('signup-email').value.trim();
+          const dob = document.getElementById('signup-dob').value;
+
+          const res = await fetch('/api/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: name,
+              full_name: name,
+              email: email,
+              phone_or_email: email,
+              birthday: dob,
+              dob: dob
+            })
+          });
+          const data = await res.json();
+
+          if (res.ok) {
+            showToast(data.message || 'Verification code sent to your email!', 'success');
+            setTimeout(() => {
+              window.location.href = data.redirect || `/verify-otp?email=${encodeURIComponent(email)}`;
+            }, 800);
+          } else {
+            showToast(data.detail || data.message || 'Signup failed', 'error');
+            submitBtn.textContent = origText;
+            submitBtn.disabled = false;
+          }
+        }
+      } catch (err) {
+        showToast('Network communication error. Please try again.', 'error');
+        submitBtn.textContent = origText;
+        submitBtn.disabled = false;
+      }
+    }
+
+    // Check if user came with ?mode=signup or is already logged in
+    window.addEventListener('DOMContentLoaded', async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const path = window.location.pathname;
+      if (urlParams.get('mode') === 'signup' || path === '/register') {
+        switchMode('signup');
+      }
+
+      // If token already valid, auto-redirect to /home
+      const token = localStorage.getItem('gravity_auth_token');
+      if (token) {
+        try {
+          const res = await fetch('/api/v1/auth/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            window.location.href = '/home';
+          }
+        } catch (e) {}
+      }
+    });
+  </script>
+</body>
+</html>

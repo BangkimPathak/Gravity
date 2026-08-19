@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gravity | Real-Time Messenger</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/sidebar.css">
+  <link rel="stylesheet" href="css/chat.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+  <div id="app-root">
+    <!-- ========================================================= -->
+    <!-- 1. LEFT-SIDE DOCK / RAIL (SHADCN SIDEBAR WITH ICONS)      -->
+    <!-- ========================================================= -->
+    <nav class="left-rail" id="left-rail">
+      <!-- Top Section: Navigation Icons -->
+      <div class="rail-top-section">
+        <!-- Messages Tab (Active) -->
+        <button class="rail-action-btn active" id="btn-nav-messages" title="Messages">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+        </button>
+      </div>
+
+      <!-- Bottom Section: User Profile -->
+      <div class="rail-bottom-section" style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: auto; padding-bottom: 12px;">
+        <!-- View User Profile Button -->
+        <button class="rail-profile-btn" id="btn-open-profile" title="View User / Profile">
+          <div class="rail-avatar-wrapper">
+            <img id="my-avatar" src="assets/default-avatar.svg" alt="Profile" class="rail-avatar-img">
+            <span class="rail-status-dot" id="my-status-dot"></span>
+          </div>
+        </button>
+      </div>
+    </nav>
+
+    <!-- ========================================================= -->
+    <!-- 2. CHATS COLUMN (RESIZABLE PANEL: 25%)                     -->
+    <!-- ========================================================= -->
+    <aside class="sidebar" id="sidebar">
+      <!-- Sidebar Header with Bold "Chats", New Chat, Create Group & Archive -->
+      <header class="sidebar-header">
+        <h1 class="chats-header-title">Chats</h1>
+        <div class="sidebar-header-actions">
+          <button class="icon-btn" id="btn-header-new-chat" title="New Contact / Direct Chat">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-header-new-group" title="Create New Group">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-header-archive" title="Archived Messages & Chats">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="m10 12 2 2 2-2"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Search & Filters -->
+      <section class="search-container">
+        <div class="search-input-box">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="search-chats-input" class="search-input" placeholder="Search or start new chat">
+        </div>
+        <div class="filter-tabs">
+          <button class="filter-chip active" data-filter="all">All</button>
+          <button class="filter-chip" data-filter="unread">Unread</button>
+          <button class="filter-chip" data-filter="favourites">Favourites</button>
+          <button class="filter-chip" data-filter="groups">Groups</button>
+          <button class="filter-chip" data-filter="archived">Archived</button>
+          <button class="filter-chip" data-filter="custom" style="padding: 5px 10px;">+</button>
+        </div>
+      </section>
+
+      <!-- Archived Chats Quick Banner -->
+      <div class="archived-row-banner" id="btn-sidebar-archived" title="View Archived Chats">
+        <div class="archived-row-left">
+          <div class="archived-icon-circle">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="m10 12 2 2 2-2"/></svg>
+          </div>
+          <span class="archived-row-text">Archived</span>
+        </div>
+        <span class="archived-count-pill" id="archived-badge-count">0</span>
+      </div>
+
+      <!-- Active Conversations Feed -->
+      <ul class="chat-list" id="conversation-list">
+        <!-- Injected dynamically via ui.js -->
+      </ul>
+    </aside>
+
+    <!-- ========================================================= -->
+    <!-- 3. RIGHT MAIN CHAT VIEWPORT (RESIZABLE PANEL: 75%)        -->
+    <!-- ========================================================= -->
+    <main class="chat-viewport" id="chat-viewport">
+      <!-- Empty Placeholder -->
+      <div class="empty-viewport" id="empty-chat-placeholder">
+        <svg class="empty-viewport-icon" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+        <h1 class="empty-viewport-title">Gravity Messenger</h1>
+        <p class="empty-viewport-subtitle">Secure real-time communication platform. End-to-end synchronized across all devices.</p>
+        <div class="e2e-notice">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>End-to-end encrypted connection</span>
+        </div>
+      </div>
+
+      <!-- Active Conversation Pane -->
+      <div id="active-chat-pane" style="display: none; flex-direction: column; height: 100%; position: relative; min-height: 0;">
+        <!-- Chat Header -->
+        <header class="chat-header">
+          <div class="chat-header-info" id="active-chat-header-info">
+            <button class="chat-back-btn" id="btn-back-to-sidebar" title="Back">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <div class="avatar-wrapper">
+              <img id="active-chat-avatar" src="assets/default-avatar.svg" alt="Contact" class="avatar-img">
+            </div>
+            <div class="chat-header-details">
+              <span class="chat-header-title" id="active-chat-title">Conversation</span>
+              <span class="chat-header-status" id="active-chat-presence">Contact Info</span>
+            </div>
+          </div>
+          <div class="chat-header-actions">
+            <button class="icon-btn" id="btn-toggle-archive-chat" title="Archive / Unarchive Chat">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="m10 12 2 2 2-2"/></svg>
+            </button>
+            <button class="icon-btn" title="Search in chat">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Message Feed Area -->
+        <section class="messages-container" id="messages-container">
+          <!-- Dynamically populated via ui.js -->
+        </section>
+
+        <!-- Typing Notification Indicator -->
+        <div id="typing-indicator-row" style="display: none; padding: 0 5% 6px 5%;">
+          <div class="typing-bubble">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+          </div>
+        </div>
+
+        <!-- Attachment Menu Dropdown (Paperclip Dropdown) -->
+        <div class="attachment-menu" id="attachment-menu">
+          <button class="attach-option" id="btn-attach-photo">
+            <span class="attach-icon-circle photos">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            </span>
+            <span>Photos & Videos</span>
+          </button>
+          <button class="attach-option" id="btn-attach-camera">
+            <span class="attach-icon-circle" style="background: linear-gradient(135deg, #ec4899, #db2777); color: #fff;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            </span>
+            <span>Camera</span>
+          </button>
+          <button class="attach-option" id="btn-attach-doc">
+            <span class="attach-icon-circle docs">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </span>
+            <span>Document</span>
+          </button>
+          <button class="attach-option" id="btn-attach-audio">
+            <span class="attach-icon-circle audio">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            </span>
+            <span>Audio & Voice</span>
+          </button>
+        </div>
+
+        <!-- Emoji Picker Grid -->
+        <div class="emoji-picker-panel" id="emoji-picker-panel">
+          <div class="emoji-grid" id="emoji-grid">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Bottom Action Bar (Chat Input Bar) -->
+        <footer class="chat-input-bar">
+          <div class="input-actions-left">
+            <button class="icon-btn" id="btn-toggle-emoji" title="Emojis">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
+            </button>
+            <button class="icon-btn" id="btn-toggle-attach" title="Attach file">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+          </div>
+
+          <div class="chat-input-box">
+            <textarea id="chat-textarea" class="chat-textarea" rows="1" placeholder="Type a message"></textarea>
+          </div>
+
+          <div class="send-btn-wrapper" style="display: flex; align-items: center; gap: 6px;">
+            <button class="send-btn" id="btn-send-message" title="Send Message">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+            </button>
+            <button class="icon-btn" id="btn-voice-record" title="Record Voice Note">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            </button>
+          </div>
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <!-- Hidden File Input for Media Uploads -->
+  <input type="file" id="media-file-input" style="display: none;">
+
+  <!-- Hidden File Input for Avatar Uploads -->
+  <input type="file" id="avatar-upload-file-input" accept="image/*" style="display: none;">
+
+  <!-- ========================================================= -->
+  <!-- 4. VIEW USER / SETTINGS DRAWER MODAL                      -->
+  <!-- ========================================================= -->
+  <div class="modal-overlay" id="modal-profile">
+    <div class="settings-modal-card">
+      <!-- Settings Header -->
+      <div class="settings-header" id="settings-top-header">
+        <h2 class="settings-header-title" id="settings-header-name">My Account</h2>
+        <button class="icon-btn btn-close-modal" title="Close">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+        </button>
+      </div>
+
+      <!-- Settings Body -->
+      <div class="settings-body">
+        <!-- 1. Main Navigation View -->
+        <div id="settings-main-view">
+          <!-- Hero Section: Status Bubble & Avatar with Photo Upload -->
+          <div class="settings-hero">
+            <div class="status-speech-bubble" id="settings-status-bubble">
+              <span id="settings-status-text">Available</span>
+            </div>
+
+            <div class="settings-avatar-container" id="btn-change-avatar-main" title="Click to change profile picture">
+              <img id="profile-modal-avatar" src="assets/default-avatar.svg" alt="User Avatar">
+              <div class="avatar-edit-overlay">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                <span>CHANGE PHOTO</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Settings Items List -->
+          <div class="settings-menu-list">
+            <!-- 1. General -->
+            <button class="settings-menu-item" id="item-open-general">
+              <div class="settings-menu-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+              </div>
+              <div class="settings-menu-content">
+                <span class="settings-menu-title">General</span>
+                <span class="settings-menu-desc">Theme appearance, sound & preferences</span>
+              </div>
+            </button>
+
+            <!-- 2. Profile -->
+            <button class="settings-menu-item" id="item-open-profile-detail">
+              <div class="settings-menu-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div class="settings-menu-content">
+                <span class="settings-menu-title">Profile</span>
+                <span class="settings-menu-desc">Name, profile picture, about, phone</span>
+              </div>
+            </button>
+
+            <!-- 3. Account -->
+            <button class="settings-menu-item" id="item-open-account-detail">
+              <div class="settings-menu-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+              </div>
+              <div class="settings-menu-content">
+                <span class="settings-menu-title">Account</span>
+                <span class="settings-menu-desc">Email ID, registration date, security</span>
+              </div>
+            </button>
+
+            <!-- 4. Switch User -->
+            <button class="settings-menu-item" id="item-switch-user" style="color: var(--accent-primary);">
+              <div class="settings-menu-icon" style="color: var(--accent-primary);">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <div class="settings-menu-content">
+                <span class="settings-menu-title">Switch User</span>
+                <span class="settings-menu-desc">Sign up a new account or switch profile</span>
+              </div>
+            </button>
+
+            <!-- 5. Log Out -->
+            <button class="settings-menu-item" id="btn-settings-logout" style="color: var(--accent-danger);">
+              <div class="settings-menu-icon" style="color: var(--accent-danger);">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+              </div>
+              <div class="settings-menu-content">
+                <span class="settings-menu-title">Log Out</span>
+                <span class="settings-menu-desc">Sign out of this device</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. DETAIL VIEW: EDIT PROFILE -->
+        <div class="settings-detail-panel" id="panel-profile">
+          <div class="settings-back-bar">
+            <button class="icon-btn btn-settings-back" title="Back to Settings">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <h3 class="settings-back-title">Edit profile</h3>
+          </div>
+
+          <div class="edit-profile-avatar-wrapper">
+            <div class="profile-avatar-large" id="btn-change-avatar-edit" title="Change Profile Photo">
+              <img id="profile-edit-avatar-img" src="assets/default-avatar.svg" alt="Profile Photo">
+              <div class="avatar-camera-overlay">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-section-block">
+            <span class="profile-section-label">About</span>
+            <div class="profile-section-row" id="display-row-about">
+              <span class="profile-section-value" id="val-profile-about">Available</span>
+              <button class="profile-action-btn" id="btn-edit-about" title="Edit About">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              </button>
+            </div>
+            <div class="inline-edit-container" id="container-edit-about" style="display: none;">
+              <input type="text" class="inline-edit-input" id="input-edit-about" placeholder="About / Status">
+              <button class="inline-save-btn" id="btn-save-about" title="Save"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></button>
+              <button class="inline-cancel-btn" id="btn-cancel-about" title="Cancel" style="color: var(--text-secondary);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
+            </div>
+            <span class="profile-section-note">Until I change it</span>
+          </div>
+
+          <div class="profile-section-block">
+            <span class="profile-section-label">Name</span>
+            <div class="profile-section-row" id="display-row-name">
+              <span class="profile-section-value" id="val-profile-name">Bangkim Pathak</span>
+              <button class="profile-action-btn" id="btn-edit-name" title="Edit Name">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              </button>
+            </div>
+            <div class="inline-edit-container" id="container-edit-name" style="display: none;">
+              <input type="text" class="inline-edit-input" id="input-edit-name" placeholder="Full Name">
+              <button class="inline-save-btn" id="btn-save-name" title="Save"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></button>
+              <button class="inline-cancel-btn" id="btn-cancel-name" title="Cancel" style="color: var(--text-secondary);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
+            </div>
+          </div>
+
+          <div class="profile-section-block" style="border-bottom: none;">
+            <span class="profile-section-label">Phone</span>
+            <div class="profile-section-row">
+              <div style="display: flex; align-items: center; gap: 14px;">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                <span class="profile-section-value" id="val-profile-phone">+91 93655 62292</span>
+              </div>
+              <button class="profile-action-btn" id="btn-copy-phone" title="Copy Phone Number">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. DETAIL VIEW: GENERAL -->
+        <div class="settings-detail-panel" id="panel-general">
+          <div class="settings-back-bar">
+            <button class="icon-btn btn-settings-back" title="Back to Settings">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <h3 class="settings-back-title">General Settings</h3>
+          </div>
+
+          <div class="settings-info-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div class="info-card-label">App Appearance</div>
+                <div class="info-card-value" id="current-theme-display">Dark Theme</div>
+              </div>
+              <button class="btn-primary" id="btn-panel-theme-toggle" style="padding: 6px 14px; font-size: 13px;">Toggle Theme</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. DETAIL VIEW: ACCOUNT -->
+        <div class="settings-detail-panel" id="panel-account">
+          <div class="settings-back-bar">
+            <button class="icon-btn btn-settings-back" title="Back to Settings">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <h3 class="settings-back-title">Account Details</h3>
+          </div>
+
+          <div class="settings-info-card">
+            <div class="info-card-row">
+              <span class="info-card-label">Registered Login Email</span>
+              <span class="info-card-value" id="account-display-email">email@example.com</span>
+            </div>
+
+            <div class="info-card-row">
+              <span class="info-card-label">Day & Date Account Opened</span>
+              <span class="info-card-value" id="account-display-created">Wednesday, 19 Aug 2026</span>
+            </div>
+
+            <div class="info-card-row">
+              <span class="info-card-label">Region of Registration</span>
+              <span class="info-card-value" id="account-display-region">India (Asia/Kolkata)</span>
+            </div>
+
+            <div class="info-card-row">
+              <span class="info-card-label">User Role</span>
+              <span class="info-card-value" id="account-display-role">Member</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Direct Chat Modal -->
+  <div class="modal-overlay" id="modal-new-chat">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">New Contact</h3>
+        <button class="icon-btn btn-close-modal"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="search-input-box">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="input-search-directory" class="search-input" placeholder="Search contacts...">
+        </div>
+        <div class="user-select-list" id="directory-user-list">
+          <!-- Injected dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Group Chat Modal -->
+  <div class="modal-overlay" id="modal-new-group">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Create Group Channel</h3>
+        <button class="icon-btn btn-close-modal"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Group Name</label>
+          <input type="text" id="input-group-title" class="form-input" placeholder="e.g. Gravity Architecture Core">
+        </div>
+        <label class="form-label">Select Group Members</label>
+        <div class="user-select-list" id="group-member-select-list">
+          <!-- Injected dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary btn-close-modal">Cancel</button>
+        <button class="btn-primary" id="btn-submit-create-group">Create Group</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Modular Vanilla ES6 Scripts -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

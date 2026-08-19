@@ -1,0 +1,210 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* WhatsApp Web Outer Canvas */
+#app-root {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 1. Left Side Rail (Profile & Action Dock) */
+.left-rail {
+  width: 62px;
+  height: 100%;
+  background-color: var(--bg-sidebar-header);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  z-index: 25;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.rail-top-section, .rail-bottom-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.rail-profile-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  outline: none;
+  border-radius: 50%;
+  transition: transform var(--transition-fast);
+}
+
+.rail-profile-btn:hover {
+  transform: scale(1.05);
+}
+
+.rail-avatar-wrapper {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: #374248;
+  border: 2px solid transparent;
+  transition: border-color var(--transition-fast);
+}
+
+.rail-profile-btn:hover .rail-avatar-wrapper {
+  border-color: var(--accent-primary);
+}
+
+.rail-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.rail-status-dot {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background-color: var(--accent-online);
+  border: 2px solid var(--bg-sidebar-header);
+}
+
+.rail-action-btn {
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.rail-action-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.rail-action-btn.active {
+  background-color: rgba(233, 237, 239, 0.12);
+  color: var(--accent-primary);
+  border-radius: 20px;
+}
+
+[data-theme="light"] .rail-action-btn.active {
+  background-color: rgba(0, 0, 0, 0.08);
+  color: #111b21;
+}
+
+.rail-action-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+/* 2. Left Sidebar Layout (Chats Pane) */
+.sidebar {
+  width: var(--sidebar-width);
+  min-width: 320px;
+  max-width: 440px;
+  height: 100%;
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+/* 3. Right Main Chat Viewport Layout */
+.chat-viewport {
+  flex: 1;
+  height: 100%;
+  background-color: var(--bg-chat);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-width: 0;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(134, 150, 160, 0.25);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(134, 150, 160, 0.4);
+}
+
+/* Responsive Mobile Rules */
+@media (max-width: 768px) {
+  .left-rail {
+    display: none;
+  }
+  .sidebar {
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+  }
+  .chat-viewport {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 30;
+  }
+  body.chat-open .sidebar {
+    display: none;
+  }
+  body.chat-open .chat-viewport {
+    display: flex;
+  }
+}

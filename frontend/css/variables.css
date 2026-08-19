@@ -1,0 +1,81 @@
+:root {
+  /* WhatsApp Dark Theme (Default) */
+  --bg-app: #0c1317;
+  --bg-sidebar: #111b21;
+  --bg-sidebar-header: #202c33;
+  --bg-chat: #0b141a;
+  --bg-chat-header: #202c33;
+  --bg-input-bar: #202c33;
+  --bg-input: #2a3942;
+  --bg-search: #202c33;
+  --bg-search-input: #111b21;
+  --bg-hover: #202c33;
+  --bg-active: #2a3942;
+  --bg-modal: #111b21;
+  --bg-modal-overlay: rgba(11, 20, 26, 0.85);
+
+  /* Message Bubbles */
+  --bubble-outgoing: #005c4b;
+  --bubble-incoming: #202c33;
+  --bubble-outgoing-text: #e9edef;
+  --bubble-incoming-text: #e9edef;
+  --bubble-meta: rgba(233, 237, 239, 0.6);
+
+  /* Brand & Status Accents */
+  --accent-primary: #00a884;
+  --accent-primary-hover: #02906f;
+  --accent-unread: #00a884;
+  --accent-tick-blue: #53bdeb;
+  --accent-tick-gray: #8696a0;
+  --accent-danger: #ea4335;
+  --accent-online: #00a884;
+
+  /* Typography Colors */
+  --text-primary: #e9edef;
+  --text-secondary: #8696a0;
+  --text-muted: #667781;
+  --text-accent: #00a884;
+
+  /* Borders & Dividers */
+  --border-subtle: #222d34;
+  --border-light: #2a3942;
+
+  /* Dimensions */
+  --sidebar-width: 420px;
+  --header-height: 60px;
+  --input-bar-height: 62px;
+  --border-radius-bubble: 8px;
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+}
+
+[data-theme="light"] {
+  --bg-app: #eae6df;
+  --bg-sidebar: #ffffff;
+  --bg-sidebar-header: #f0f2f5;
+  --bg-chat: #efeae2;
+  --bg-chat-header: #f0f2f5;
+  --bg-input-bar: #f0f2f5;
+  --bg-input: #ffffff;
+  --bg-search: #ffffff;
+  --bg-search-input: #f0f2f5;
+  --bg-hover: #f5f6f6;
+  --bg-active: #ebebeb;
+  --bg-modal: #ffffff;
+  --bg-modal-overlay: rgba(0, 0, 0, 0.45);
+
+  --bubble-outgoing: #d9fdd3;
+  --bubble-incoming: #ffffff;
+  --bubble-outgoing-text: #111b21;
+  --bubble-incoming-text: #111b21;
+  --bubble-meta: #667781;
+
+  --text-primary: #111b21;
+  --text-secondary: #667781;
+  --text-muted: #8696a0;
+
+  --border-subtle: #e9edef;
+  --border-light: #d1d7db;
+}
