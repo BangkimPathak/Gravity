@@ -432,62 +432,27 @@
       background: linear-gradient(180deg, rgba(9, 13, 22, 0.1) 0%, rgba(9, 13, 22, 0.75) 100%);
     }
 
-    /* Testimonials Floating Container */
-    .testimonials-container {
+    /* Illustration Showcase Container */
+    .illustration-container {
       position: absolute;
-      bottom: 32px;
-      left: 50%;
-      transform: translateX(-50%);
+      inset: 0;
       display: flex;
-      gap: 16px;
-      width: 100%;
-      max-width: 90%;
+      align-items: center;
       justify-content: center;
+      padding: 36px;
       z-index: 5;
     }
 
-    .testimonial-card {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      border-radius: 24px;
-      background: rgba(15, 23, 42, 0.55);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      padding: 18px;
-      width: 260px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    .hero-illustration-img {
+      max-width: 86%;
+      max-height: 86%;
+      object-fit: contain;
+      border-radius: 26px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: #ffffff;
+      padding: 14px;
       animation: testimonialIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    .testimonial-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 14px;
-      object-fit: cover;
-      flex-shrink: 0;
-    }
-
-    .testimonial-info {
-      font-size: 13px;
-      line-height: 1.4;
-    }
-
-    .testimonial-name {
-      font-weight: 600;
-      color: #ffffff;
-    }
-
-    .testimonial-handle {
-      font-size: 11px;
-      color: var(--muted-foreground);
-    }
-
-    .testimonial-text {
-      margin-top: 6px;
-      color: rgba(248, 250, 252, 0.85);
-      font-size: 12px;
     }
 
     /* Keyframes Animations */
@@ -645,41 +610,13 @@
     </section>
 
     <!-- ========================================================= -->
-    <!-- RIGHT COLUMN: HERO SHOWCASE + TESTIMONIALS (SHADCN STYLE) -->
+    <!-- RIGHT COLUMN: HERO SHOWCASE (ILLUSTRATION) -->
     <!-- ========================================================= -->
     <section class="right-column">
       <div class="hero-image-card">
         <div class="hero-overlay"></div>
-        <div class="testimonials-container">
-          <!-- Card 1 -->
-          <div class="testimonial-card anim-delay-1">
-            <img src="https://randomuser.me/api/portraits/women/57.jpg" class="testimonial-avatar" alt="Sarah Chen">
-            <div class="testimonial-info">
-              <p class="testimonial-name">Sarah Chen</p>
-              <p class="testimonial-handle">@sarahdigital</p>
-              <p class="testimonial-text">Amazing platform! The user experience is seamless and features are exactly what I needed.</p>
-            </div>
-          </div>
-
-          <!-- Card 2 -->
-          <div class="testimonial-card anim-delay-2" style="display: none;">
-            <img src="https://randomuser.me/api/portraits/men/64.jpg" class="testimonial-avatar" alt="Marcus Johnson">
-            <div class="testimonial-info">
-              <p class="testimonial-name">Marcus Johnson</p>
-              <p class="testimonial-handle">@marcustech</p>
-              <p class="testimonial-text">This service has transformed how I work. Clean design, powerful features, and excellent support.</p>
-            </div>
-          </div>
-
-          <!-- Card 3 -->
-          <div class="testimonial-card anim-delay-3">
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" class="testimonial-avatar" alt="David Martinez">
-            <div class="testimonial-info">
-              <p class="testimonial-name">David Martinez</p>
-              <p class="testimonial-handle">@davidcreates</p>
-              <p class="testimonial-text">I've tried many platforms, but this one stands out. Intuitive, reliable, and genuinely helpful.</p>
-            </div>
-          </div>
+        <div class="illustration-container">
+          <img src="/assets/reading_illustration.png" alt="Gravity Reading Illustration" class="hero-illustration-img">
         </div>
       </div>
     </section>
