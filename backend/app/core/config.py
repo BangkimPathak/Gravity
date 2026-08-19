@@ -24,14 +24,14 @@ class Settings(BaseSettings):
     # SMTP Email Configuration (for OTP codes)
     SENDER_EMAIL: str = os.getenv("SENDER_EMAIL", "")
     SENDER_APP_PASSWORD: str = os.getenv("SENDER_APP_PASSWORD", "")
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_HOST: str = os.getenv("SMTP_HOST", )
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT"))
     
     # Database Settings
-    DB_HOST: str = os.getenv("DB_HOST", "127.0.0.1")
-    DB_PORT: str = os.getenv("DB_PORT", "3306")
-    DB_USER: str = os.getenv("DB_USER", "root")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "Bangkim")
+    DB_HOST: str = os.getenv("DB_HOST")
+    DB_PORT: str = os.getenv("DB_PORT")
+    DB_USER: str = os.getenv("DB_USER")
+    DB_PASSWORD: str = os.getenv("DB_PASSWORD")
     DB_NAME: str = os.getenv("DB_NAME", "gravity")
     
     # Database URL
@@ -41,13 +41,13 @@ class Settings(BaseSettings):
     )
     
     # JWT & Cookie Session
-    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "gravity_super_secret_jwt_key_2026")
-    SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "gravity_super_secret_jwt_key_2026")
-    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
-    ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
-    COOKIE_NAME: str = os.getenv("COOKIE_NAME", "auth_token")
-    COOKIE_EXPIRATION_MINUTES: int = int(os.getenv("COOKIE_EXPIRATION_MINUTES", "60"))
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("COOKIE_EXPIRATION_MINUTES", "60"))
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY")
+    SECRET_KEY: str = os.getenv("JWT_SECRET_KEY")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM")
+    ALGORITHM: str = os.getenv("JWT_ALGORITHM")
+    COOKIE_NAME: str = os.getenv("COOKIE_NAME")
+    COOKIE_EXPIRATION_MINUTES: int = int(os.getenv("COOKIE_EXPIRATION_MINUTES"))
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("COOKIE_EXPIRATION_MINUTES"))
     
     # Redis Pub/Sub Configuration
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")

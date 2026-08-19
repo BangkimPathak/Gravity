@@ -521,16 +521,31 @@
 
     function getEmailParam() {
       const urlParams = new URLSearchParams(window.location.search);
-      return (urlParams.get('email') || '').trim().toLowerCase();
+      let email = (urlParams.get('email') || '').trim().toLowerCase();
+      if (!email) {
+        email = (localStorage.getItem('pending_verification_email') || '').trim().toLowerCase();
+      }
+      return email;
     }
 
     async function initOtpPage() {
       const email = getEmailParam();
+      const displayEmailEl = document.getElementById('display-email');
+      const otpInput = document.getElementById('otp-code');
+
+      // Auto format / clean input on keystroke or paste
+      if (otpInput) {
+        otpInput.addEventListener('input', (e) => {
+          e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+        });
+      }
+
       if (!email) {
-        showToast('Email address is missing from the verification request.', 'error');
+        showToast('No active verification session found. Please register or enter your email.', 'error');
+        if (displayEmailEl) displayEmailEl.textContent = 'Not specified';
         return;
       }
-      document.getElementById('display-email').textContent = email;
+      if (displayEmailEl) displayEmailEl.textContent = email;
 
       try {
         const res = await fetch(`/api/otp-time?email=${encodeURIComponent(email)}`);
@@ -550,7 +565,7 @@
             }, 600);
             return;
           }
-          remainingSeconds = data.remaining_seconds;
+          remainingSeconds = data.remaining_seconds || 600;
           document.getElementById('otp-countdown').textContent = formatTime(remainingSeconds);
           startCountdown();
         } else {
@@ -564,8 +579,19 @@
     async function handleOtpSubmit(e) {
       e.preventDefault();
       hideToast();
-      const email = getEmailParam();
-      const otpCode = document.getElementById('otp-code').value.trim();
+      let email = getEmailParam();
+      const otpInputEl = document.getElementById('otp-code');
+      const otpCode = (otpInputEl ? otpInputEl.value : '').replace(/\D/g, '').trim();
+
+      if (!email) {
+        showToast('Email address is missing. Please sign up again.', 'error');
+        return;
+      }
+
+      if (otpCode.length !== 6) {
+        showToast('Please enter the full 6-digit verification code.', 'error');
+        return;
+      }
 
       const form = e.target;
       const submitBtn = form.querySelector('.submit-btn');
@@ -582,12 +608,13 @@
         const result = await res.json();
 
         if (res.ok) {
-          showToast(result.message, 'success');
+          showToast(result.message || 'Email verified successfully!', 'success');
+          localStorage.setItem('pending_verification_email', email);
           setTimeout(() => {
             window.location.href = result.redirect || `/set-password?email=${encodeURIComponent(email)}`;
-          }, 800);
+          }, 600);
         } else {
-          showToast(result.detail || result.message || 'Verification failed.', 'error');
+          showToast(result.detail || result.message || 'Verification failed. Please check the code or resend.', 'error');
         }
       } catch (err) {
         showToast('Network error during verification.', 'error');
@@ -600,6 +627,10 @@
     async function handleResendOtp() {
       hideToast();
       const email = getEmailParam();
+      if (!email) {
+        showToast('Cannot resend code: Email address is missing.', 'error');
+        return;
+      }
       const resendBtn = document.getElementById('resend-btn');
       resendBtn.disabled = true;
       resendBtn.textContent = 'Sending...';
@@ -613,7 +644,7 @@
         const result = await res.json();
 
         if (res.ok) {
-          showToast(result.message, 'success');
+          showToast(result.message || 'New verification code generated!', 'success');
           remainingSeconds = 600;
           startCountdown();
         } else {

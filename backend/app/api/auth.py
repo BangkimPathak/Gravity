@@ -7,6 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, update
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_password_hash, verify_password, create_access_token, decode_access_token
 from app.core.email_service import generate_otp_code, send_otp_email_async
@@ -134,6 +135,9 @@ async def signup_endpoint(data: UserRegister, db: AsyncSession = Depends(get_db)
         if data.password:
             existing_user.hashed_password = get_password_hash(data.password)
 
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(minutes=15)
+
     # Upsert OTP record
     if otp_entry:
         otp_entry.otp_number = otp_code
@@ -157,9 +161,12 @@ async def signup_endpoint(data: UserRegister, db: AsyncSession = Depends(get_db)
     # Dispatch OTP email asynchronously via SMTP (or logged in console)
     send_otp_email_async(raw_email, otp_code)
 
+    has_smtp = bool(settings.SENDER_EMAIL and settings.SENDER_APP_PASSWORD)
+    msg = "Account validation code generated. Check your email for OTP." if has_smtp else f"Verification code: {otp_code} (Add SENDER_EMAIL in .env for live emails)"
+
     return StandardResponse(
         status="success",
-        message="Account validation code generated. Check your email for OTP.",
+        message=msg,
         redirect=f"/verify-otp?email={raw_email}"
     )
 
@@ -176,16 +183,16 @@ async def get_otp_time(email: str = Query(..., description="Target email address
     if not otp_record:
         raise HTTPException(status_code=404, detail="Verification session not found.")
 
-    if otp_record.status in ["COMPLETED", "LOCKED", "EXPIRED", "VERIFIED"]:
+    if otp_record.status in ["COMPLETED", "LOCKED", "VERIFIED"]:
         return OtpTimeResponse(status="success", remaining_seconds=0, otp_status=otp_record.status)
 
     now = datetime.now(timezone.utc)
     expires = otp_record.expires_at
-    if expires.tzinfo is None:
+    if expires and expires.tzinfo is None:
         expires = expires.replace(tzinfo=timezone.utc)
 
-    remaining = int((expires - now).total_seconds())
-    if remaining <= 0:
+    remaining = int((expires - now).total_seconds()) if expires else 0
+    if remaining <= 0 or otp_record.status == "EXPIRED":
         otp_record.status = "EXPIRED"
         await db.commit()
         return OtpTimeResponse(status="success", remaining_seconds=0, otp_status="EXPIRED")
@@ -198,51 +205,68 @@ async def get_otp_time(email: str = Query(..., description="Target email address
 @router.post("/verify-otp", response_model=StandardResponse)
 async def verify_otp(data: VerifyOtpRequest, db: AsyncSession = Depends(get_db)):
     """Validates user 6-digit OTP code."""
-    email_clean = data.email.strip().lower()
-    otp_input = data.otp.strip()
+    email_clean = (data.email or '').strip().lower()
+    otp_input = re.sub(r'\D', '', str(data.otp or '')).strip()
+
+    if not email_clean:
+        raise HTTPException(status_code=400, detail="Email address is required for verification.")
+
+    if len(otp_input) != 6:
+        raise HTTPException(status_code=400, detail="Please enter a complete 6-digit verification code.")
 
     res = await db.execute(select(OTP).where(OTP.email == email_clean))
     otp_record = res.scalars().first()
 
     if not otp_record:
-        raise HTTPException(status_code=400, detail="Verification session not found. Please sign up again.")
+        raise HTTPException(status_code=400, detail="Verification session not found. Please register your profile first.")
 
     if otp_record.status == "COMPLETED":
-        raise HTTPException(status_code=400, detail="Profile registration has already been completed. Please log in.")
+        return StandardResponse(
+            status="success",
+            message="Account registration already completed. Redirecting to login...",
+            redirect="/login"
+        )
 
     if otp_record.status == "VERIFIED":
         return StandardResponse(
             status="success",
-            message="Email address successfully verified. Please choose a password to complete your profile.",
+            message="Email address verified. Please set your password.",
             redirect=f"/set-password?email={email_clean}"
         )
 
-    if otp_record.status == "LOCKED" or otp_record.attempts >= 3:
+    if otp_record.status == "LOCKED" or otp_record.attempts >= 5:
         otp_record.status = "LOCKED"
         await db.commit()
-        raise HTTPException(status_code=400, detail="Too many failed attempts. For security, please sign up again.")
+        raise HTTPException(status_code=400, detail="Too many failed attempts. Please click 'Resend Code' to request a fresh OTP.")
 
     now = datetime.now(timezone.utc)
     expires = otp_record.expires_at
-    if expires.tzinfo is None:
+    if expires and expires.tzinfo is None:
         expires = expires.replace(tzinfo=timezone.utc)
 
-    if (expires - now).total_seconds() <= 0 or otp_record.status == "EXPIRED":
+    if (expires and (expires - now).total_seconds() <= 0) or otp_record.status == "EXPIRED":
         otp_record.status = "EXPIRED"
         await db.commit()
-        raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
+        raise HTTPException(status_code=400, detail="Verification code has expired. Please click 'Resend Code'.")
 
-    if otp_record.otp_number != otp_input:
+    # Match OTP code
+    if str(otp_record.otp_number).strip() != otp_input:
         otp_record.attempts += 1
+        remaining_tries = max(0, 5 - otp_record.attempts)
         await db.commit()
-        raise HTTPException(status_code=400, detail="Invalid verification code. Please try again.")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Incorrect 6-digit verification code. ({remaining_tries} attempts remaining)"
+        )
 
+    # Success
     otp_record.status = "VERIFIED"
+    otp_record.attempts = 0
     await db.commit()
 
     return StandardResponse(
         status="success",
-        message="Email address successfully verified. Please choose a password to complete your profile.",
+        message="Email successfully verified! Proceeding to password setup...",
         redirect=f"/set-password?email={email_clean}"
     )
 
@@ -252,27 +276,44 @@ async def verify_otp(data: VerifyOtpRequest, db: AsyncSession = Depends(get_db))
 @router.post("/resend-otp", response_model=StandardResponse)
 async def resend_otp(data: ResendOtpRequest, db: AsyncSession = Depends(get_db)):
     """Generates and resends a fresh OTP code."""
-    email_clean = data.email.strip().lower()
+    email_clean = (data.email or '').strip().lower()
+    if not email_clean:
+        raise HTTPException(status_code=400, detail="Email address is required.")
+
     res = await db.execute(select(OTP).where(OTP.email == email_clean))
     otp_record = res.scalars().first()
 
-    if not otp_record:
-        raise HTTPException(status_code=400, detail="Verification session expired. Please sign up again.")
-
     new_otp = generate_otp_code()
     now = datetime.now(timezone.utc)
-    otp_record.otp_number = new_otp
-    otp_record.status = "ACTIVE"
-    otp_record.attempts = 0
-    otp_record.requested_at = now
-    otp_record.expires_at = now + timedelta(minutes=10)
+    expires = now + timedelta(minutes=15)
+
+    if not otp_record:
+        otp_record = OTP(
+            email=email_clean,
+            otp_number=new_otp,
+            status="ACTIVE",
+            attempts=0,
+            requested_at=now,
+            expires_at=expires
+        )
+        db.add(otp_record)
+    else:
+        otp_record.otp_number = new_otp
+        otp_record.status = "ACTIVE"
+        otp_record.attempts = 0
+        otp_record.requested_at = now
+        otp_record.expires_at = expires
+
     await db.commit()
 
     send_otp_email_async(email_clean, new_otp)
 
+    has_smtp = bool(settings.SENDER_EMAIL and settings.SENDER_APP_PASSWORD)
+    msg = "A fresh verification code has been dispatched to your email." if has_smtp else f"Fresh verification code: {new_otp}"
+
     return StandardResponse(
         status="success",
-        message="A new verification code has been sent to your email."
+        message=msg
     )
 
 # ==============================================================================

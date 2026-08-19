@@ -801,10 +801,11 @@
           const data = await res.json();
 
           if (res.ok) {
+            localStorage.setItem('pending_verification_email', email);
             showToast(data.message || 'Verification code sent to your email!', 'success');
             setTimeout(() => {
               window.location.href = data.redirect || `/verify-otp?email=${encodeURIComponent(email)}`;
-            }, 800);
+            }, 1000);
           } else {
             showToast(data.detail || data.message || 'Signup failed', 'error');
             submitBtn.textContent = origText;
