@@ -602,12 +602,22 @@
           </p>
         </form>
 
-        <!-- 2. REGISTRATION FORM (Collects: Full Name, Email, Birthday, Phone Number) -->
+        <!-- 2. REGISTRATION FORM (Collects: Full Name, User ID, Email, Birthday) -->
         <form id="signup-form" class="form-content" onsubmit="handleFormSubmit(event, 'signup')">
           <div class="form-group">
             <label class="form-label" for="signup-name">Full Name</label>
             <div class="glass-input-wrapper">
               <input type="text" id="signup-name" class="glass-input" required placeholder="John Doe">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label class="form-label" for="signup-username">User ID / Username</label>
+              <span id="username-status" style="font-size: 11px; font-weight: 600; display: none;"></span>
+            </div>
+            <div class="glass-input-wrapper">
+              <input type="text" id="signup-username" class="glass-input" required placeholder="unique_userid" autocomplete="off" oninput="handleUsernameInput(this.value)">
             </div>
           </div>
 
@@ -732,6 +742,46 @@
       }
     }
 
+    let usernameCheckTimeout = null;
+    function handleUsernameInput(val) {
+      clearTimeout(usernameCheckTimeout);
+      const statusEl = document.getElementById('username-status');
+      if (!statusEl) return;
+      const cleanVal = val.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+      
+      if (!cleanVal) {
+        statusEl.style.display = 'none';
+        return;
+      }
+      
+      if (cleanVal.length < 3) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = 'Min 3 characters';
+        return;
+      }
+
+      statusEl.style.display = 'block';
+      statusEl.style.color = '#94a3b8';
+      statusEl.textContent = 'Checking...';
+
+      usernameCheckTimeout = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/check-username?username=${encodeURIComponent(cleanVal)}`);
+          const data = await res.json();
+          if (data.available) {
+            statusEl.style.color = '#34d399';
+            statusEl.textContent = '✓ Available';
+          } else {
+            statusEl.style.color = '#f87171';
+            statusEl.textContent = '✗ Already taken';
+          }
+        } catch (e) {
+          statusEl.style.display = 'none';
+        }
+      }, 300);
+    }
+
     async function handleFormSubmit(e, type) {
       e.preventDefault();
       hideToast();
@@ -770,8 +820,16 @@
         } else {
           submitBtn.textContent = 'Sending OTP...';
           const name = document.getElementById('signup-name').value.trim();
+          const username = document.getElementById('signup-username').value.trim().replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
           const email = document.getElementById('signup-email').value.trim();
           const dob = document.getElementById('signup-dob').value;
+
+          if (!username || username.length < 3) {
+            showToast('Please choose a valid User ID / Username (at least 3 characters).', 'error');
+            submitBtn.textContent = origText;
+            submitBtn.disabled = false;
+            return;
+          }
 
           const res = await fetch('/api/signup', {
             method: 'POST',
@@ -779,6 +837,7 @@
             body: JSON.stringify({
               name: name,
               full_name: name,
+              username: username,
               email: email,
               phone_or_email: email,
               birthday: dob,

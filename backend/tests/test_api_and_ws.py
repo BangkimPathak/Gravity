@@ -76,15 +76,24 @@ def test_full_multistep_registration_with_custom_fields():
         uid_suffix = uuid.uuid4().hex[:6]
         test_email = f"patient_{uid_suffix}@careportal.com"
         test_name = f"Patient Test {uid_suffix}"
+        test_username = f"patient_{uid_suffix}"
         test_birthday = "1998-05-15"
 
         # ----------------------------------------------------
-        # Step 1: Registration Form Submission
+        # Step 0: Check Username Availability
+        # ----------------------------------------------------
+        check_res = client.get(f"/api/check-username?username={test_username}")
+        assert check_res.status_code == 200
+        assert check_res.json()["available"] is True
+
+        # ----------------------------------------------------
+        # Step 1: Registration Form Submission with custom User ID
         # ----------------------------------------------------
         signup_res = client.post(
             "/api/signup",
             json={
                 "name": test_name,
+                "username": test_username,
                 "email": test_email,
                 "birthday": test_birthday
             }
@@ -177,12 +186,24 @@ def test_full_multistep_registration_with_custom_fields():
         assert login_data["user"]["phone_or_email"] == test_email
 
         # ----------------------------------------------------
-        # Step 6: Test Duplicate Signup Rejection
+        # Step 6: Test Duplicate Username Rejection & Duplicate Email Rejection
         # ----------------------------------------------------
+        dup_username_res = client.post(
+            "/api/signup",
+            json={
+                "name": "Different Person",
+                "username": test_username,
+                "email": f"different_{uid_suffix}@careportal.com"
+            }
+        )
+        assert dup_username_res.status_code == 400
+        assert "already taken" in dup_username_res.json()["detail"].lower()
+
         dup_res = client.post(
             "/api/signup",
             json={
                 "name": test_name,
+                "username": f"another_{uid_suffix}",
                 "email": test_email,
                 "birthday": test_birthday
             }
@@ -232,7 +253,7 @@ def test_forgot_and_reset_password_workflow():
         # 1. Register a test user
         uid = uuid.uuid4().hex[:6]
         target_email = f"user_forgot_{uid}@gravity.chat"
-        client.post("/api/signup", json={"name": f"User {uid}", "email": target_email})
+        client.post("/api/signup", json={"name": f"User {uid}", "username": f"user_{uid}", "email": target_email})
         otp1 = fetch_db_otp_sync(target_email)
         client.post("/api/verify-otp", json={"email": target_email, "otp": otp1})
         client.post("/api/set-password", json={"email": target_email, "password": "originalpassword123"})
@@ -300,7 +321,7 @@ def test_websocket_realtime_interactions():
         # Register User A
         uid_a = uuid.uuid4().hex[:6]
         email_a = f"alice_{uid_a}@gravity.chat"
-        client.post("/api/signup", json={"name": f"Alice {uid_a}", "email": email_a})
+        client.post("/api/signup", json={"name": f"Alice {uid_a}", "username": f"alice_{uid_a}", "email": email_a})
         otp_a = fetch_db_otp_sync(email_a)
         client.post("/api/verify-otp", json={"email": email_a, "otp": otp_a})
         res_a = client.post("/api/set-password", json={"email": email_a, "password": "password123"})
@@ -311,7 +332,7 @@ def test_websocket_realtime_interactions():
         # Register User B
         uid_b = uuid.uuid4().hex[:6]
         email_b = f"bob_{uid_b}@gravity.chat"
-        client.post("/api/signup", json={"name": f"Bob {uid_b}", "email": email_b})
+        client.post("/api/signup", json={"name": f"Bob {uid_b}", "username": f"bob_{uid_b}", "email": email_b})
         otp_b = fetch_db_otp_sync(email_b)
         client.post("/api/verify-otp", json={"email": email_b, "otp": otp_b})
         res_b = client.post("/api/set-password", json={"email": email_b, "password": "password123"})

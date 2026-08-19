@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, update
+from sqlalchemy import select, or_, update, func
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -65,6 +65,45 @@ async def get_current_user(
     return user
 
 # ==============================================================================
+# 0.5 USERNAME AVAILABILITY CHECK
+# ==============================================================================
+@router.get("/check-username")
+@router.get("/auth/check-username")
+async def check_username_availability(
+    username: str = Query(..., min_length=1, description="Username / User ID to check"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Checks in real-time whether a User ID / Username is available or already taken."""
+    clean_user = re.sub(r'[^a-zA-Z0-9_]', '', username.strip().lower())
+    if len(clean_user) < 3:
+        return {
+            "available": False,
+            "username": clean_user,
+            "message": "Username must be at least 3 characters long."
+        }
+    if len(clean_user) > 30:
+        return {
+            "available": False,
+            "username": clean_user,
+            "message": "Username cannot exceed 30 characters."
+        }
+    
+    u_check = await db.execute(select(User).where(func.lower(User.username) == clean_user))
+    existing = u_check.scalars().first()
+    if existing:
+        return {
+            "available": False,
+            "username": clean_user,
+            "message": f"The User ID '{clean_user}' is already taken. Please choose another User ID."
+        }
+    
+    return {
+        "available": True,
+        "username": clean_user,
+        "message": f"User ID '{clean_user}' is available!"
+    }
+
+# ==============================================================================
 # 1. SIGNUP / REGISTRATION INITIAL STEP
 # ==============================================================================
 @router.post("/signup", response_model=StandardResponse, status_code=status.HTTP_201_CREATED)
@@ -72,16 +111,27 @@ async def get_current_user(
 @router.post("/register", response_model=StandardResponse, status_code=status.HTTP_201_CREATED)
 async def signup_endpoint(data: UserRegister, db: AsyncSession = Depends(get_db)):
     """
-    Step 1: Collects user registration details: Full Name, Email, Birthday, Phone Number,
-    saves temporary profile, generates a 6-digit OTP and dispatches email.
+    Step 1: Collects user registration details: Full Name, User ID / Username, Email, Birthday,
+    verifies that the User ID is unique, saves temporary profile, generates a 6-digit OTP and dispatches email.
     """
-    name = str(data.name or data.full_name or data.username or '').strip()
+    name = str(data.name or data.full_name or '').strip()
     raw_email = str(data.email or data.phone_or_email or '').strip().lower()
+    raw_username = str(data.username or '').strip().lower()
     birthday = str(data.birthday or data.dob or '').strip()
     role = str(data.role or 'Member').strip()
 
     if not name:
         raise HTTPException(status_code=400, detail="Full Name is required.")
+
+    if not raw_username:
+        raise HTTPException(status_code=400, detail="User ID / Username is required.")
+
+    clean_username = re.sub(r'[^a-zA-Z0-9_]', '', raw_username)
+    if len(clean_username) < 3 or len(clean_username) > 30:
+        raise HTTPException(
+            status_code=400, 
+            detail="User ID / Username must be between 3 and 30 characters and contain only letters, numbers, and underscores."
+        )
 
     if not raw_email:
         raise HTTPException(status_code=400, detail="Email address is required.")
@@ -89,9 +139,20 @@ async def signup_endpoint(data: UserRegister, db: AsyncSession = Depends(get_db)
     if not is_valid_email(raw_email):
         raise HTTPException(status_code=400, detail="Invalid email address format.")
 
-    # Check if user already exists and is fully registered
+    # Check if User ID / Username already exists in the database
+    u_check = await db.execute(select(User).where(func.lower(User.username) == clean_username))
+    existing_by_username = u_check.scalars().first()
+
+    # Check if user with this email already exists
     user_res = await db.execute(select(User).where(User.phone_or_email == raw_email))
     existing_user = user_res.scalars().first()
+
+    # If username exists and does not belong to this exact unverified draft, reject
+    if existing_by_username and (not existing_user or existing_by_username.id != existing_user.id):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"The User ID '{clean_username}' is already taken. Please choose a new User ID / Username."
+        )
 
     otp_res = await db.execute(select(OTP).where(OTP.email == raw_email))
     otp_entry = otp_res.scalars().first()
@@ -104,35 +165,25 @@ async def signup_endpoint(data: UserRegister, db: AsyncSession = Depends(get_db)
     now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=10)
 
-    # Sanitize and create valid username
-    clean_name = re.sub(r'[^a-zA-Z0-9_]', '', name.replace(" ", "_")).lower()
-    if not clean_name:
-        clean_name = raw_email.split('@')[0]
-    clean_name = re.sub(r'[^a-zA-Z0-9_]', '', clean_name).lower() or f"user_{uuid.uuid4().hex[:6]}"
-    username = clean_name[:40]
-
     if not existing_user:
-        # Check username collision
-        u_check = await db.execute(select(User).where(User.username == username))
-        if u_check.scalars().first():
-            username = f"{username[:35]}_{uuid.uuid4().hex[:4]}"
-
         new_user = User(
-            username=username,
+            username=clean_username,
             full_name=name,
             phone_or_email=raw_email,
             birthday=birthday,
             hashed_password=get_password_hash(data.password) if data.password else "",
             role=role,
-            avatar_url=f"https://api.dicebear.com/7.x/avataaars/svg?seed={username}",
+            avatar_url=f"https://api.dicebear.com/7.x/avataaars/svg?seed={clean_username}",
             status_bio="Hey there! I am using Gravity",
             created_at=now
         )
         db.add(new_user)
     else:
+        existing_user.username = clean_username
         existing_user.full_name = name
         existing_user.birthday = birthday
         existing_user.role = role
+        existing_user.avatar_url = f"https://api.dicebear.com/7.x/avataaars/svg?seed={clean_username}"
         if data.password:
             existing_user.hashed_password = get_password_hash(data.password)
 
