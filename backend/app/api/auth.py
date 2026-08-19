@@ -159,15 +159,12 @@ async def signup_endpoint(data: UserRegister, db: AsyncSession = Depends(get_db)
 
     await db.commit()
 
-    # Dispatch OTP email asynchronously via SMTP (or logged in console)
+    # Dispatch OTP email asynchronously via SMTP
     send_otp_email_async(raw_email, otp_code)
-
-    has_smtp = bool(settings.SENDER_EMAIL and settings.SENDER_APP_PASSWORD)
-    msg = "Account validation code generated. Check your email for OTP." if has_smtp else f"Verification code: {otp_code} (Add SENDER_EMAIL in .env for live emails)"
 
     return StandardResponse(
         status="success",
-        message=msg,
+        message="Account validation code generated. Check your email for OTP.",
         redirect=f"/verify-otp?email={raw_email}"
     )
 
@@ -236,12 +233,9 @@ async def forgot_password_api(data: ForgotPasswordRequest, db: AsyncSession = De
     # Dispatch OTP email asynchronously
     send_otp_email_async(raw_email, otp_code)
 
-    has_smtp = bool(settings.SENDER_EMAIL and settings.SENDER_APP_PASSWORD)
-    msg = "Password reset verification code generated. Check your email for OTP." if has_smtp else f"Password reset OTP: {otp_code}"
-
     return StandardResponse(
         status="success",
-        message=msg,
+        message="Verification code generated. Check your email for OTP.",
         redirect=f"/verify-otp?email={raw_email}"
     )
 
@@ -383,12 +377,9 @@ async def resend_otp(data: ResendOtpRequest, db: AsyncSession = Depends(get_db))
 
     send_otp_email_async(email_clean, new_otp)
 
-    has_smtp = bool(settings.SENDER_EMAIL and settings.SENDER_APP_PASSWORD)
-    msg = "A fresh verification code has been dispatched to your email." if has_smtp else f"Fresh verification code: {new_otp}"
-
     return StandardResponse(
         status="success",
-        message=msg
+        message="A new verification code has been sent to your email."
     )
 
 # ==============================================================================
