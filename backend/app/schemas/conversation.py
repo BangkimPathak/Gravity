@@ -15,6 +15,9 @@ class ParticipantOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class DirectConversationCreate(BaseModel):
+    target_user_id: Union[int, str]
+
 class ConversationCreate(BaseModel):
     is_group: bool = False
     title: Optional[str] = None

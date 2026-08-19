@@ -193,27 +193,15 @@ def test_full_multistep_registration_with_custom_fields():
 def test_forgot_and_reset_password_workflow():
     """
     Tests the VaultSync Forgot Password -> Reset Password lifecycle:
-    1. Rejects unknown email with 404
-    2. Rejects invalid email format with 400
+    1. Registers a new test user
+    2. Rejects unknown email with 404
     3. Successfully sends 6-digit OTP for registered user
     4. Validates OTP via /api/verify-otp
     5. Sets new password via /api/set-password
     6. Logs in with the new password
     """
     with TestClient(app) as client:
-        # Non-existent user
-        bad_res = client.post("/api/forgot-password", json={"email": "nonexistent_user_999@gravity.chat"})
-        assert bad_res.status_code == 404
-        assert "no registered account found" in bad_res.json()["detail"].lower()
-
-        # Existing user (e.g. David)
-        target_email = "david@gravity.chat"
-        forgot_res = client.post("/api/forgot-password", json={"email": target_email})
-        assert forgot_res.status_code == 200
-        assert forgot_res.json()["status"] == "success"
-        assert forgot_res.json()["redirect"] == f"/verify-otp?email={target_email}"
-
-        # Fetch generated OTP
+        # Helper to fetch OTP from database
         def fetch_db_otp_sync(email):
             from pathlib import Path
             import sqlite3
@@ -241,21 +229,40 @@ def test_forgot_and_reset_password_workflow():
                 conn.close()
                 return row[0] if row else None
 
-        otp_code = fetch_db_otp_sync(target_email)
-        assert otp_code is not None and len(otp_code) == 6
+        # 1. Register a test user
+        uid = uuid.uuid4().hex[:6]
+        target_email = f"user_forgot_{uid}@gravity.chat"
+        client.post("/api/signup", json={"name": f"User {uid}", "email": target_email})
+        otp1 = fetch_db_otp_sync(target_email)
+        client.post("/api/verify-otp", json={"email": target_email, "otp": otp1})
+        client.post("/api/set-password", json={"email": target_email, "password": "originalpassword123"})
 
-        # Verify OTP
-        verify_res = client.post("/api/verify-otp", json={"email": target_email, "otp": otp_code})
+        # 2. Non-existent user rejection
+        bad_res = client.post("/api/forgot-password", json={"email": "nonexistent_user_999@gravity.chat"})
+        assert bad_res.status_code == 404
+        assert "no registered account found" in bad_res.json()["detail"].lower()
+
+        # 3. Existing user requests password reset
+        forgot_res = client.post("/api/forgot-password", json={"email": target_email})
+        assert forgot_res.status_code == 200
+        assert forgot_res.json()["status"] == "success"
+        assert forgot_res.json()["redirect"] == f"/verify-otp?email={target_email}"
+
+        # 4. Fetch and verify reset OTP
+        otp_reset = fetch_db_otp_sync(target_email)
+        assert otp_reset is not None and len(otp_reset) == 6
+
+        verify_res = client.post("/api/verify-otp", json={"email": target_email, "otp": otp_reset})
         assert verify_res.status_code == 200
         assert verify_res.json()["status"] == "success"
 
-        # Set new password
-        new_password = "newdavidpassword2026"
+        # 5. Set new password
+        new_password = "newresetpassword2026"
         set_pwd_res = client.post("/api/set-password", json={"email": target_email, "password": new_password})
         assert set_pwd_res.status_code == 200
         assert set_pwd_res.json()["access_token"] is not None
 
-        # Log in with new password
+        # 6. Log in with new password
         login_res = client.post("/api/login", json={"email": target_email, "password": new_password})
         assert login_res.status_code == 200
         assert login_res.json()["access_token"] is not None
@@ -263,73 +270,116 @@ def test_forgot_and_reset_password_workflow():
 
 def test_websocket_realtime_interactions():
     with TestClient(app) as client:
-        # Login Alex
-        alex_login = client.post(
-            "/api/login",
-            json={"email": "alex@gravity.chat", "password": "password123"}
+        def fetch_db_otp_sync(email):
+            from pathlib import Path
+            import sqlite3
+            import pymysql
+            from app.core.config import settings, BASE_DIR
+            if "mysql" in settings.DATABASE_URL:
+                conn = pymysql.connect(
+                    host=settings.DB_HOST,
+                    port=int(settings.DB_PORT),
+                    user=settings.DB_USER,
+                    password=settings.DB_PASSWORD,
+                    database=settings.DB_NAME
+                )
+                with conn.cursor() as cur:
+                    cur.execute("SELECT otp_number FROM otp WHERE email = %s", (email,))
+                    row = cur.fetchone()
+                    conn.close()
+                    return row[0] if row else None
+            else:
+                db_path = BASE_DIR / "gravity.db"
+                conn = sqlite3.connect(str(db_path))
+                cur = conn.cursor()
+                cur.execute("SELECT otp_number FROM otp WHERE email = ?", (email,))
+                row = cur.fetchone()
+                conn.close()
+                return row[0] if row else None
+
+        # Register User A
+        uid_a = uuid.uuid4().hex[:6]
+        email_a = f"alice_{uid_a}@gravity.chat"
+        client.post("/api/signup", json={"name": f"Alice {uid_a}", "email": email_a})
+        otp_a = fetch_db_otp_sync(email_a)
+        client.post("/api/verify-otp", json={"email": email_a, "otp": otp_a})
+        res_a = client.post("/api/set-password", json={"email": email_a, "password": "password123"})
+        token_a = res_a.json()["access_token"]
+        user_a_id = res_a.json()["user"]["id"]
+        username_a = res_a.json()["user"]["username"]
+
+        # Register User B
+        uid_b = uuid.uuid4().hex[:6]
+        email_b = f"bob_{uid_b}@gravity.chat"
+        client.post("/api/signup", json={"name": f"Bob {uid_b}", "email": email_b})
+        otp_b = fetch_db_otp_sync(email_b)
+        client.post("/api/verify-otp", json={"email": email_b, "otp": otp_b})
+        res_b = client.post("/api/set-password", json={"email": email_b, "password": "password123"})
+        token_b = res_b.json()["access_token"]
+        user_b_id = res_b.json()["user"]["id"]
+
+        # Create Direct Conversation between User A and User B
+        conv_res = client.post(
+            "/api/conversations/direct",
+            headers={"Authorization": f"Bearer {token_a}"},
+            json={"target_user_id": user_b_id}
         )
-        alex_token = alex_login.json()["access_token"]
+        assert conv_res.status_code == 201
+        conversation_id = conv_res.json()["id"]
 
-        # Login Sarah
-        sarah_login = client.post(
-            "/api/login",
-            json={"email": "sarah@gravity.chat", "password": "password123"}
-        )
-        sarah_token = sarah_login.json()["access_token"]
+        # Open concurrent WebSockets for both User A and User B
+        with client.websocket_connect(f"/ws/chat?token={token_a}") as ws_a:
+            init_a = receive_event(ws_a, "connected")
+            assert init_a is not None
 
-        # Open concurrent WebSockets for both Alex and Sarah
-        with client.websocket_connect(f"/ws/chat?token={alex_token}") as ws_alex:
-            alex_init = receive_event(ws_alex, "connected")
-            assert alex_init is not None
+            with client.websocket_connect(f"/ws/chat?token={token_b}") as ws_b:
+                init_b = receive_event(ws_b, "connected")
+                assert init_b is not None
 
-            with client.websocket_connect(f"/ws/chat?token={sarah_token}") as ws_sarah:
-                sarah_init = receive_event(ws_sarah, "connected")
-                assert sarah_init is not None
-
-                # Alex sends a message to direct chat
-                ws_alex.send_json({
+                # User A sends a message
+                ws_a.send_json({
                     "event": "message_send",
                     "data": {
-                        "conversation_id": "c-alex-sarah",
+                        "conversation_id": conversation_id,
                         "content": "Testing real-time messaging after Gravity authentication!",
                         "message_type": "text",
-                        "client_temp_id": "temp-alex-777"
+                        "client_temp_id": f"temp-{uid_a}"
                     }
                 })
 
-                # Alex receives ACK
-                ack = receive_event(ws_alex, "message_ack")
+                # User A receives ACK
+                ack = receive_event(ws_a, "message_ack")
                 assert ack is not None
-                assert ack["data"]["client_temp_id"] == "temp-alex-777"
+                assert ack["data"]["client_temp_id"] == f"temp-{uid_a}"
                 assert ack["data"]["status"] == "delivered"
 
-                # Sarah receives the message
-                sarah_recv = receive_event(ws_sarah, "message_receive")
-                assert sarah_recv is not None
-                assert sarah_recv["data"]["content"] == "Testing real-time messaging after Gravity authentication!"
-                msg_id = sarah_recv["data"]["id"]
+                # User B receives the message
+                b_recv = receive_event(ws_b, "message_receive")
+                assert b_recv is not None
+                assert b_recv["data"]["content"] == "Testing real-time messaging after Gravity authentication!"
+                msg_id = b_recv["data"]["id"]
 
-                # Sarah sends typing indicator
-                ws_sarah.send_json({
+                # User A sends typing indicator
+                ws_a.send_json({
                     "event": "typing_start",
-                    "data": {"conversation_id": "c-alex-sarah"}
+                    "data": {"conversation_id": conversation_id}
                 })
 
-                alex_typing = receive_event(ws_alex, "typing_start")
-                assert alex_typing is not None
-                assert alex_typing["data"]["username"] == "sarah_connor"
+                b_typing = receive_event(ws_b, "typing_start")
+                assert b_typing is not None
+                assert b_typing["data"]["username"] == username_a
 
-                # Sarah sends read receipt
-                ws_sarah.send_json({
+                # User B sends read receipt
+                ws_b.send_json({
                     "event": "status_update",
                     "data": {
-                        "conversation_id": "c-alex-sarah",
+                        "conversation_id": conversation_id,
                         "status": "read",
                         "message_ids": [msg_id]
                     }
                 })
 
-                alex_status = receive_event(ws_alex, "status_update")
-                assert alex_status is not None
-                assert alex_status["data"]["status"] == "read"
-                assert msg_id in alex_status["data"]["message_ids"]
+                a_status = receive_event(ws_a, "status_update")
+                assert a_status is not None
+                assert a_status["data"]["status"] == "read"
+                assert msg_id in a_status["data"]["message_ids"]

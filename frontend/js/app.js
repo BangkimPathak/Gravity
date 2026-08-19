@@ -90,14 +90,6 @@ class GravityApp {
       toast.textContent = "";
     };
 
-    // Quick Login Helper for Demo
-    window.quickLogin = async (email) => {
-      document.getElementById("login-email").value = email;
-      document.getElementById("login-password").value = "password123";
-      const loginForm = document.getElementById("login-form");
-      loginForm.dispatchEvent(new Event("submit"));
-    };
-
     // Handle Form Submissions asynchronously exactly like hospital portal
     window.handleFormSubmit = async (event, mode) => {
       event.preventDefault();

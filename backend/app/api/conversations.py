@@ -10,7 +10,7 @@ from app.core.database import get_db
 from app.models.user import User
 from app.models.conversation import Conversation, Participant
 from app.models.message import Message
-from app.schemas.conversation import ConversationCreate, ConversationOut, ParticipantOut
+from app.schemas.conversation import ConversationCreate, ConversationOut, ParticipantOut, DirectConversationCreate
 from app.schemas.message import MessageOut
 from app.schemas.user import UserOut
 from app.api.auth import get_current_user
@@ -115,14 +115,19 @@ async def list_user_conversations(
 
     return response_list
 
-@router.post("/direct", response_model=ConversationOut)
+@router.post("/direct", response_model=ConversationOut, status_code=status.HTTP_201_CREATED)
 async def create_or_get_direct_conversation(
-    target_user_id: str,
+    data: Optional[DirectConversationCreate] = None,
+    target_user_id: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Retrieves an existing direct chat with the target user, or creates a new one."""
-    target_uid = int(target_user_id) if str(target_user_id).isdigit() else target_user_id
+    raw_target = data.target_user_id if data and data.target_user_id is not None else target_user_id
+    if raw_target is None:
+        raise HTTPException(status_code=400, detail="target_user_id is required")
+
+    target_uid = int(raw_target) if str(raw_target).isdigit() else raw_target
     if target_uid == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot start a direct conversation with yourself")
 
