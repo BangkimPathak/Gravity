@@ -741,8 +741,13 @@
     }
 
     function handleResetPasswordPrompt(e) {
-      e.preventDefault();
-      showToast("Password reset instructions sent to your email.", "success");
+      if (e) e.preventDefault();
+      const loginEmail = document.getElementById('login-email')?.value?.trim();
+      if (loginEmail) {
+        window.location.href = `/reset-password?email=${encodeURIComponent(loginEmail)}`;
+      } else {
+        window.location.href = '/reset-password';
+      }
     }
 
     async function handleFormSubmit(e, type) {

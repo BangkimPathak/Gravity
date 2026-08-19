@@ -47,6 +47,12 @@ async def serve_set_password():
     """Serves the password creation and onboarding completion page."""
     return FileResponse(frontend_dir / "set_password.html")
 
+@pages_router.get("/reset-password", include_in_schema=False)
+@pages_router.get("/forgot-password", include_in_schema=False)
+async def serve_reset_password_page():
+    """Serves the password reset / forgot password email entry page."""
+    return FileResponse(frontend_dir / "reset_password.html")
+
 @pages_router.get("/home", include_in_schema=False)
 @pages_router.get("/app", include_in_schema=False)
 @pages_router.get("/chat", include_in_schema=False)

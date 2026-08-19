@@ -18,6 +18,7 @@ from app.schemas.auth import (
     VerifyOtpRequest, 
     ResendOtpRequest, 
     SetPasswordRequest, 
+    ForgotPasswordRequest,
     UserLogin, 
     TokenResponse, 
     StandardResponse, 
@@ -163,6 +164,80 @@ async def signup_endpoint(data: UserRegister, db: AsyncSession = Depends(get_db)
 
     has_smtp = bool(settings.SENDER_EMAIL and settings.SENDER_APP_PASSWORD)
     msg = "Account validation code generated. Check your email for OTP." if has_smtp else f"Verification code: {otp_code} (Add SENDER_EMAIL in .env for live emails)"
+
+    return StandardResponse(
+        status="success",
+        message=msg,
+        redirect=f"/verify-otp?email={raw_email}"
+    )
+
+# ==============================================================================
+# 1.5 FORGOT PASSWORD / RESEND PASSWORD (VaultSync Architecture)
+# ==============================================================================
+@router.post("/forgot-password", response_model=StandardResponse)
+@router.post("/reset-password", response_model=StandardResponse)
+@router.post("/resend-password", response_model=StandardResponse)
+@router.post("/auth/forgot-password", response_model=StandardResponse)
+@router.post("/auth/reset-password", response_model=StandardResponse)
+async def forgot_password_api(data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """
+    VaultSync Forgot Password Controller:
+    1. Extracts and validates email from request.
+    2. Verifies that the user account exists in the database.
+    3. Generates 6-digit OTP code and saves it in the active OTP record.
+    4. Sends OTP verification email to the user.
+    5. Returns redirect URL to /verify-otp?email=...
+    """
+    raw_email = (data.email or '').strip().lower()
+
+    if not raw_email:
+        raise HTTPException(status_code=400, detail="Email address is required.")
+
+    if not is_valid_email(raw_email):
+        raise HTTPException(status_code=400, detail="Invalid email address format.")
+
+    user_res = await db.execute(select(User).where(User.phone_or_email == raw_email))
+    user = user_res.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=404, 
+            detail="No registered account found with this email address."
+        )
+
+    # Generate 6-digit numeric OTP
+    otp_code = generate_otp_code()
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(minutes=10)
+
+    # Upsert OTP record
+    otp_res = await db.execute(select(OTP).where(OTP.email == raw_email))
+    otp_record = otp_res.scalars().first()
+
+    if otp_record:
+        otp_record.otp_number = otp_code
+        otp_record.status = "ACTIVE"
+        otp_record.attempts = 0
+        otp_record.requested_at = now
+        otp_record.expires_at = expires
+    else:
+        new_otp = OTP(
+            email=raw_email,
+            otp_number=otp_code,
+            status="ACTIVE",
+            attempts=0,
+            requested_at=now,
+            expires_at=expires
+        )
+        db.add(new_otp)
+
+    await db.commit()
+
+    # Dispatch OTP email asynchronously
+    send_otp_email_async(raw_email, otp_code)
+
+    has_smtp = bool(settings.SENDER_EMAIL and settings.SENDER_APP_PASSWORD)
+    msg = "Password reset verification code generated. Check your email for OTP." if has_smtp else f"Password reset OTP: {otp_code}"
 
     return StandardResponse(
         status="success",

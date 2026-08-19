@@ -36,6 +36,11 @@ class SetPasswordRequest(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+    model_config = ConfigDict(extra="ignore")
+
 class UserLogin(BaseModel):
     username_or_email: Optional[str] = None
     email: Optional[str] = None

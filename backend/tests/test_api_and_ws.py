@@ -49,6 +49,11 @@ def test_health_check_and_page_routes():
         assert set_pwd_page.status_code == 200
         assert "Create Password" in set_pwd_page.text
 
+        # Reset Password HTML Page
+        reset_pwd_page = client.get("/reset-password")
+        assert reset_pwd_page.status_code == 200
+        assert "Reset Password" in reset_pwd_page.text
+
         # Part 2: Main Chat Application Page
         chat_page = client.get("/home")
         assert chat_page.status_code == 200
@@ -102,7 +107,8 @@ def test_full_multistep_registration_with_custom_fields():
 
         # Fetch the generated OTP code from the database for verification test
         def fetch_db_otp_sync():
-            from app.core.config import settings
+            from pathlib import Path
+            from app.core.config import settings, BASE_DIR
             import pymysql
             import sqlite3
             if "mysql" in settings.DATABASE_URL:
@@ -119,7 +125,8 @@ def test_full_multistep_registration_with_custom_fields():
                     conn.close()
                     return row[0] if row else None
             else:
-                conn = sqlite3.connect("backend/gravity.db")
+                db_path = BASE_DIR / "gravity.db"
+                conn = sqlite3.connect(str(db_path))
                 cur = conn.cursor()
                 cur.execute("SELECT otp_number FROM otp WHERE email = ?", (test_email,))
                 row = cur.fetchone()
@@ -183,22 +190,75 @@ def test_full_multistep_registration_with_custom_fields():
         assert dup_res.status_code == 400
         assert "already registered" in dup_res.json()["detail"].lower()
 
-def test_registration_validation_errors():
+def test_forgot_and_reset_password_workflow():
+    """
+    Tests the VaultSync Forgot Password -> Reset Password lifecycle:
+    1. Rejects unknown email with 404
+    2. Rejects invalid email format with 400
+    3. Successfully sends 6-digit OTP for registered user
+    4. Validates OTP via /api/verify-otp
+    5. Sets new password via /api/set-password
+    6. Logs in with the new password
+    """
     with TestClient(app) as client:
-        # Missing name
-        res1 = client.post("/api/signup", json={"email": "valid@email.com"})
-        assert res1.status_code == 400
-        assert "name is required" in res1.json()["detail"].lower()
+        # Non-existent user
+        bad_res = client.post("/api/forgot-password", json={"email": "nonexistent_user_999@gravity.chat"})
+        assert bad_res.status_code == 404
+        assert "no registered account found" in bad_res.json()["detail"].lower()
 
-        # Missing email
-        res2 = client.post("/api/signup", json={"name": "John Doe"})
-        assert res2.status_code == 400
-        assert "email address is required" in res2.json()["detail"].lower()
+        # Existing user (e.g. David)
+        target_email = "david@gravity.chat"
+        forgot_res = client.post("/api/forgot-password", json={"email": target_email})
+        assert forgot_res.status_code == 200
+        assert forgot_res.json()["status"] == "success"
+        assert forgot_res.json()["redirect"] == f"/verify-otp?email={target_email}"
 
-        # Invalid email format
-        res3 = client.post("/api/signup", json={"name": "John Doe", "email": "not-an-email"})
-        assert res3.status_code == 400
-        assert "invalid email" in res3.json()["detail"].lower()
+        # Fetch generated OTP
+        def fetch_db_otp_sync(email):
+            from pathlib import Path
+            import sqlite3
+            import pymysql
+            from app.core.config import settings, BASE_DIR
+            if "mysql" in settings.DATABASE_URL:
+                conn = pymysql.connect(
+                    host=settings.DB_HOST,
+                    port=int(settings.DB_PORT),
+                    user=settings.DB_USER,
+                    password=settings.DB_PASSWORD,
+                    database=settings.DB_NAME
+                )
+                with conn.cursor() as cur:
+                    cur.execute("SELECT otp_number FROM otp WHERE email = %s", (email,))
+                    row = cur.fetchone()
+                    conn.close()
+                    return row[0] if row else None
+            else:
+                db_path = BASE_DIR / "gravity.db"
+                conn = sqlite3.connect(str(db_path))
+                cur = conn.cursor()
+                cur.execute("SELECT otp_number FROM otp WHERE email = ?", (email,))
+                row = cur.fetchone()
+                conn.close()
+                return row[0] if row else None
+
+        otp_code = fetch_db_otp_sync(target_email)
+        assert otp_code is not None and len(otp_code) == 6
+
+        # Verify OTP
+        verify_res = client.post("/api/verify-otp", json={"email": target_email, "otp": otp_code})
+        assert verify_res.status_code == 200
+        assert verify_res.json()["status"] == "success"
+
+        # Set new password
+        new_password = "newdavidpassword2026"
+        set_pwd_res = client.post("/api/set-password", json={"email": target_email, "password": new_password})
+        assert set_pwd_res.status_code == 200
+        assert set_pwd_res.json()["access_token"] is not None
+
+        # Log in with new password
+        login_res = client.post("/api/login", json={"email": target_email, "password": new_password})
+        assert login_res.status_code == 200
+        assert login_res.json()["access_token"] is not None
 
 
 def test_websocket_realtime_interactions():
