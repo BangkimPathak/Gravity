@@ -24,14 +24,14 @@ class Settings(BaseSettings):
     # SMTP Email Configuration (for OTP codes)
     SENDER_EMAIL: str = os.getenv("SENDER_EMAIL", "")
     SENDER_APP_PASSWORD: str = os.getenv("SENDER_APP_PASSWORD", "")
-    SMTP_HOST: str = os.getenv("SMTP_HOST", )
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT"))
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
     
     # Database Settings
-    DB_HOST: str = os.getenv("DB_HOST")
-    DB_PORT: str = os.getenv("DB_PORT")
-    DB_USER: str = os.getenv("DB_USER")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD")
+    DB_HOST: str = os.getenv("DB_HOST", "localhost")
+    DB_PORT: str = os.getenv("DB_PORT", "3306")
+    DB_USER: str = os.getenv("DB_USER", "root")
+    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
     DB_NAME: str = os.getenv("DB_NAME", "gravity")
     
     # Database URL
@@ -41,13 +41,13 @@ class Settings(BaseSettings):
     )
     
     # JWT & Cookie Session
-    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY")
-    SECRET_KEY: str = os.getenv("JWT_SECRET_KEY")
-    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM")
-    ALGORITHM: str = os.getenv("JWT_ALGORITHM")
-    COOKIE_NAME: str = os.getenv("COOKIE_NAME")
-    COOKIE_EXPIRATION_MINUTES: int = int(os.getenv("COOKIE_EXPIRATION_MINUTES"))
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("COOKIE_EXPIRATION_MINUTES"))
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "gravity_super_secure_development_jwt_secret_key_2026_x89f7a")
+    SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "gravity_super_secure_development_jwt_secret_key_2026_x89f7a")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    COOKIE_NAME: str = os.getenv("COOKIE_NAME", "auth_token")
+    COOKIE_EXPIRATION_MINUTES: int = int(os.getenv("COOKIE_EXPIRATION_MINUTES", "10080"))
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("COOKIE_EXPIRATION_MINUTES", "10080"))
     
     # Redis Pub/Sub Configuration
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
