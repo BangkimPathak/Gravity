@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """
 Gravity Web Application Runner
 Launches the FastAPI backend and serves the frontend on http://localhost:8000

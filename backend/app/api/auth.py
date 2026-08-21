@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 import uuid
 import re
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, update, func
@@ -35,17 +35,23 @@ def is_valid_email(email: str) -> bool:
     return re.match(email_regex, email) is not None
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request = None,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_db)
 ) -> User:
-    """Dependency to retrieve and validate the authenticated user from JWT."""
-    if not credentials:
+    """Dependency to retrieve and validate the authenticated user from JWT Bearer or auth_token cookie."""
+    token = None
+    if credentials:
+        token = credentials.credentials
+    elif request and request.cookies.get("auth_token"):
+        token = request.cookies.get("auth_token")
+
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication credentials were not provided",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    token = credentials.credentials
     payload = decode_access_token(token)
     if not payload or "sub" not in payload:
         raise HTTPException(

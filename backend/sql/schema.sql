@@ -30,7 +30,6 @@ CREATE TABLE users (
     status_bio VARCHAR(255) DEFAULT 'Available',
     full_name VARCHAR(100) NULL,
     birthday VARCHAR(50) NULL,
-    phone VARCHAR(50) NULL,
     region VARCHAR(100) DEFAULT 'India (Asia/Kolkata)',
     role VARCHAR(50) DEFAULT 'Member',
     gender VARCHAR(20) NULL,

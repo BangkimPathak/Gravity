@@ -38,7 +38,6 @@ CREATE TABLE IF NOT EXISTS users (
     status_bio VARCHAR(255) DEFAULT 'Available',
     full_name VARCHAR(100) NULL,
     birthday VARCHAR(50) NULL,
-    phone VARCHAR(50) NULL,
     region VARCHAR(100) DEFAULT 'India (Asia/Kolkata)',
     role VARCHAR(50) DEFAULT 'Member',
     gender VARCHAR(20) NULL,
@@ -151,7 +150,7 @@ def migrate_table(table_name, columns, conflict_col=None):
         print(f"Error migrating table '{table_name}': {e}")
 
 # 1. Users
-user_cols = ["id", "username", "phone_or_email", "hashed_password", "avatar_url", "status_bio", "full_name", "birthday", "phone", "region", "role", "gender", "age", "address", "last_seen", "created_at"]
+user_cols = ["id", "username", "phone_or_email", "hashed_password", "avatar_url", "status_bio", "full_name", "birthday", "region", "role", "gender", "age", "address", "last_seen", "created_at"]
 # check if sqlite users has these cols
 s_cur.execute("PRAGMA table_info(users)")
 existing_user_cols = [r[1] for r in s_cur.fetchall()]

@@ -78,6 +78,19 @@ class AuthManager {
     if (avatarEl) avatarEl.src = this.currentUser.avatar_url || "assets/default-avatar.svg";
     if (usernameEl) usernameEl.textContent = this.currentUser.full_name || this.currentUser.username;
     if (bioEl) bioEl.textContent = this.currentUser.status_bio || "Online";
+
+    // Update settings drawer and profile detail view elements
+    const valUsername = document.getElementById("val-profile-username");
+    if (valUsername) valUsername.textContent = this.currentUser.username || this.currentUser.phone_or_email?.split("@")[0] || "";
+
+    const valName = document.getElementById("val-profile-name");
+    if (valName) valName.textContent = this.currentUser.full_name || this.currentUser.username || "";
+
+    const valAbout = document.getElementById("val-profile-about");
+    if (valAbout) valAbout.textContent = this.currentUser.status_bio || "Hey there! I am using Gravity";
+
+    const headerName = document.getElementById("settings-header-name");
+    if (headerName) headerName.textContent = this.currentUser.full_name || this.currentUser.username || "My Account";
   }
 }
 

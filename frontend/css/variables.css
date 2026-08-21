@@ -40,15 +40,17 @@
   --border-subtle: #222d34;
   --border-light: #2a3942;
 
-  /* Dimensions */
-  --sidebar-width: 420px;
+  /* Dimensions & Responsive Sizes */
+  --sidebar-width: clamp(320px, 30vw, 440px);
+  --rail-width: 64px;
   --header-height: 60px;
   --input-bar-height: 62px;
   --border-radius-bubble: 8px;
+  --ring-focus: rgba(0, 168, 132, 0.25);
 
   /* Transitions */
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.25s ease;
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 [data-theme="light"] {

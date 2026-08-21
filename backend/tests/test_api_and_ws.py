@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+backend_dir = Path(__file__).resolve().parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
 import asyncio
 import json
 import io
@@ -404,3 +410,117 @@ def test_websocket_realtime_interactions():
                 assert a_status is not None
                 assert a_status["data"]["status"] == "read"
                 assert msg_id in a_status["data"]["message_ids"]
+
+def test_database_user_search_engine():
+    """
+    Tests database-backed search engine for users:
+    1. Search by exact User ID (numeric, e.g. 5)
+    2. Search by User ID with prefixes (e.g. id:5, #5, uid:5)
+    3. Search by Email address (full and partial)
+    4. Search by Username (with and without '@' prefix)
+    5. Search by Full Name
+    6. Verify include_self parameter behavior
+    """
+    with TestClient(app) as client:
+        def fetch_db_otp_sync(email):
+            from pathlib import Path
+            import sqlite3
+            import pymysql
+            from app.core.config import settings, BASE_DIR
+            if "mysql" in settings.DATABASE_URL:
+                conn = pymysql.connect(
+                    host=settings.DB_HOST,
+                    port=int(settings.DB_PORT),
+                    user=settings.DB_USER,
+                    password=settings.DB_PASSWORD,
+                    database=settings.DB_NAME
+                )
+                with conn.cursor() as cur:
+                    cur.execute("SELECT otp_number FROM otp WHERE email = %s", (email,))
+                    row = cur.fetchone()
+                    conn.close()
+                    return row[0] if row else None
+            else:
+                db_path = BASE_DIR / "gravity.db"
+                conn = sqlite3.connect(str(db_path))
+                cur = conn.cursor()
+                cur.execute("SELECT otp_number FROM otp WHERE email = ?", (email,))
+                row = cur.fetchone()
+                conn.close()
+                return row[0] if row else None
+
+        # Create Searcher User
+        s_uid = uuid.uuid4().hex[:6]
+        searcher_email = f"searcher_{s_uid}@gravity.chat"
+        client.post("/api/signup", json={"name": f"Searcher User {s_uid}", "username": f"searcher_{s_uid}", "email": searcher_email})
+        otp_s = fetch_db_otp_sync(searcher_email)
+        client.post("/api/verify-otp", json={"email": searcher_email, "otp": otp_s})
+        res_s = client.post("/api/set-password", json={"email": searcher_email, "password": "password123"})
+        token_s = res_s.json()["access_token"]
+        searcher_id = res_s.json()["user"]["id"]
+
+        # Create Target User
+        t_uid = uuid.uuid4().hex[:6]
+        target_name = f"Alexander Mercury {t_uid}"
+        target_username = f"alex_{t_uid}"
+        target_email = f"alexander_{t_uid}@spacegravity.org"
+        client.post("/api/signup", json={"name": target_name, "username": target_username, "email": target_email})
+        otp_t = fetch_db_otp_sync(target_email)
+        client.post("/api/verify-otp", json={"email": target_email, "otp": otp_t})
+        res_t = client.post("/api/set-password", json={"email": target_email, "password": "password123"})
+        target_id = res_t.json()["user"]["id"]
+
+        headers = {"Authorization": f"Bearer {token_s}"}
+
+        # 1. Search by exact User ID
+        res_id = client.get(f"/api/users/search?q={target_id}", headers=headers)
+        assert res_id.status_code == 200
+        users_id = res_id.json()
+        assert len(users_id) > 0
+        assert any(u["id"] == target_id for u in users_id)
+
+        # 2. Search by User ID with prefixes (id:..., #..., uid:...)
+        res_prefix_id = client.get(f"/api/users/search?q=id:{target_id}", headers=headers)
+        assert res_prefix_id.status_code == 200
+        assert any(u["id"] == target_id for u in res_prefix_id.json())
+
+        res_hash_id = client.get(f"/api/users/search?q=%23{target_id}", headers=headers)
+        assert res_hash_id.status_code == 200
+        assert any(u["id"] == target_id for u in res_hash_id.json())
+
+        # 3. Search by Email address
+        res_email = client.get(f"/api/users/search?q={target_email}", headers=headers)
+        assert res_email.status_code == 200
+        users_email = res_email.json()
+        assert len(users_email) > 0
+        assert users_email[0]["id"] == target_id
+        assert users_email[0]["phone_or_email"] == target_email
+
+        # Partial email search
+        res_partial_email = client.get(f"/api/users/search?q=alexander_{t_uid}", headers=headers)
+        assert res_partial_email.status_code == 200
+        assert any(u["id"] == target_id for u in res_partial_email.json())
+
+        # 4. Search by Username (with and without '@')
+        res_user = client.get(f"/api/users/search?q={target_username}", headers=headers)
+        assert res_user.status_code == 200
+        assert any(u["id"] == target_id for u in res_user.json())
+
+        res_user_at = client.get(f"/api/users/search?q=@{target_username}", headers=headers)
+        assert res_user_at.status_code == 200
+        assert any(u["id"] == target_id for u in res_user_at.json())
+
+        # 5. Search by Full Name
+        res_name = client.get(f"/api/users/search?q=Alexander Mercury", headers=headers)
+        assert res_name.status_code == 200
+        assert any(u["id"] == target_id for u in res_name.json())
+
+        # 6. Verify caller exclusion by default and inclusion when include_self=True
+        res_self_excl = client.get(f"/api/users/search?q={searcher_email}", headers=headers)
+        assert res_self_excl.status_code == 200
+        assert not any(u["id"] == searcher_id for u in res_self_excl.json())
+
+        res_self_incl = client.get(f"/api/users/search?q={searcher_email}&include_self=true", headers=headers)
+        assert res_self_incl.status_code == 200
+        assert any(u["id"] == searcher_id for u in res_self_incl.json())
+

@@ -66,8 +66,9 @@ class ApiClient {
   }
 
   // User endpoints
-  async searchUsers(query) {
-    return this.request(`/users/search?q=${encodeURIComponent(query)}`);
+  async searchUsers(query, includeSelf = false) {
+    const selfParam = includeSelf ? "&include_self=true" : "";
+    return this.request(`/users/search?q=${encodeURIComponent(query)}${selfParam}`);
   }
 
   async getDirectory() {

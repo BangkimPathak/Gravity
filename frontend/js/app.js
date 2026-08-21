@@ -16,6 +16,11 @@ class GravityApp {
     this.currentFilter = "all";
     this.selectedGroupMembers = new Set();
     this.archivedIds = new Set(JSON.parse(localStorage.getItem("gravity_archived_chats") || "[]"));
+    this.contactSearchDebounce = null;
+    this.sidebarSearchDebounce = null;
+    this.groupSearchDebounce = null;
+    this.directoryUsers = [];
+    this.groupUsers = [];
   }
 
   async init() {
@@ -30,6 +35,7 @@ class GravityApp {
     // Check user authentication
     const user = await auth.initAuth();
     if (user) {
+      this.populateSettingsDrawer();
       await this.loadConversations();
     }
   }
@@ -179,7 +185,14 @@ class GravityApp {
     // View User / Settings Modal Trigger
     const btnOpenProfile = document.getElementById("btn-open-profile");
     if (btnOpenProfile) {
-      btnOpenProfile.addEventListener("click", () => {
+      btnOpenProfile.addEventListener("click", async () => {
+        try {
+          const freshUser = await api.getMe();
+          if (freshUser) {
+            auth.currentUser = freshUser;
+            auth.updateHeaderProfile();
+          }
+        } catch (_) {}
         if (!auth.currentUser) return;
         this.populateSettingsDrawer();
         this.showSettingsMainView();
@@ -205,7 +218,15 @@ class GravityApp {
     // Settings Navigation: Open Profile Detail
     const itemProfile = document.getElementById("item-open-profile-detail");
     if (itemProfile) {
-      itemProfile.addEventListener("click", () => {
+      itemProfile.addEventListener("click", async () => {
+        try {
+          const freshUser = await api.getMe();
+          if (freshUser) {
+            auth.currentUser = freshUser;
+            auth.updateHeaderProfile();
+          }
+        } catch (_) {}
+        this.populateSettingsDrawer();
         this.showSettingsPanel("panel-profile");
       });
     }
@@ -268,6 +289,7 @@ class GravityApp {
 
     // ==========================================
     // EXACT "EDIT PROFILE" INLINE ACTIONS
+    // Order: Username (static) > About > Name > Phone
     // ==========================================
 
     // 1. Edit About / Status
@@ -292,8 +314,8 @@ class GravityApp {
           const updated = await api.updateProfile({ status_bio: newBio });
           auth.currentUser = updated;
           auth.updateHeaderProfile();
-          document.getElementById("val-profile-about").textContent = updated.status_bio || "Available";
-          document.getElementById("settings-status-text").textContent = updated.status_bio || "Available";
+          document.getElementById("val-profile-about").textContent = updated.status_bio || "Hey there! I am using Gravity";
+          document.getElementById("settings-status-text").textContent = updated.status_bio || "Hey there! I am using Gravity";
           containerEditAbout.style.display = "none";
           displayRowAbout.style.display = "flex";
           UI.showToast("About status updated!");
@@ -318,7 +340,7 @@ class GravityApp {
       }
     }
 
-    // 2. Edit Name
+    // 3. Edit Name
     const btnEditName = document.getElementById("btn-edit-name");
     const displayRowName = document.getElementById("display-row-name");
     const containerEditName = document.getElementById("container-edit-name");
@@ -366,19 +388,6 @@ class GravityApp {
       }
     }
 
-    // 3. Copy Phone Number
-    const btnCopyPhone = document.getElementById("btn-copy-phone");
-    if (btnCopyPhone) {
-      btnCopyPhone.addEventListener("click", () => {
-        const phone = auth.currentUser ? (auth.currentUser.phone || "+91 93655 62292") : "+91 93655 62292";
-        navigator.clipboard.writeText(phone).then(() => {
-          UI.showToast("Phone number copied to clipboard!");
-        }).catch(() => {
-          UI.showToast(`Phone: ${phone}`);
-        });
-      });
-    }
-
     // Settings: Switch User (Redirects to Registration / Signup Portal)
     const itemSwitchUser = document.getElementById("item-switch-user");
     if (itemSwitchUser) {
@@ -398,9 +407,17 @@ class GravityApp {
     }
   }
 
-  populateSettingsDrawer() {
-    if (!auth.currentUser) return;
-    const user = auth.currentUser;
+  async populateSettingsDrawer(overrideUser = null) {
+    let user = overrideUser || auth.currentUser;
+    if (!user) {
+      try {
+        user = await api.getMe();
+        if (user) {
+          auth.currentUser = user;
+        }
+      } catch (_) {}
+    }
+    if (!user) return;
 
     // Header Name
     const headerName = document.getElementById("settings-header-name");
@@ -411,23 +428,24 @@ class GravityApp {
     if (statusText) statusText.textContent = user.status_bio || "Available";
 
     // Avatar Images (both main and edit profile view)
-    const avatarUrl = user.avatar_url || "assets/default-avatar.svg";
+    const avatarUrl = user.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.username || 'gravity')}`;
     const avatarImg = document.getElementById("profile-modal-avatar");
     if (avatarImg) avatarImg.src = avatarUrl;
     const avatarEditImg = document.getElementById("profile-edit-avatar-img");
     if (avatarEditImg) avatarEditImg.src = avatarUrl;
 
-    // Edit Profile Display Values (Matching 3rd Pic)
+    // Edit Profile Display Values in Strict Order: Username > About > Name
+    const valUsername = document.getElementById("val-profile-username");
+    if (valUsername) {
+      valUsername.textContent = user.username || user.phone_or_email?.split("@")[0] || "";
+    }
+
     const valAbout = document.getElementById("val-profile-about");
-    if (valAbout) valAbout.textContent = user.status_bio || "Busy";
+    if (valAbout) valAbout.textContent = user.status_bio || "Hey there! I am using Gravity";
 
     const valName = document.getElementById("val-profile-name");
-    if (valName) valName.textContent = user.full_name || user.username || "Bangkim Pathak";
+    if (valName) valName.textContent = user.full_name || user.username || "";
 
-    const valPhone = document.getElementById("val-profile-phone");
-    if (valPhone) valPhone.textContent = user.phone || "+91 93655 62292";
-
-    // Reset inline edit containers if any were open
     const contEditAbout = document.getElementById("container-edit-about");
     const rowAbout = document.getElementById("display-row-about");
     if (contEditAbout && rowAbout) {
@@ -459,9 +477,6 @@ class GravityApp {
     const accRegion = document.getElementById("account-display-region");
     if (accRegion) accRegion.textContent = user.region || "India (Asia/Kolkata)";
 
-    const accRole = document.getElementById("account-display-role");
-    if (accRole) accRole.textContent = user.role || "Member";
-
     // Current Theme Display
     const curTheme = document.documentElement.getAttribute("data-theme") || "dark";
     const curThemeEl = document.getElementById("current-theme-display");
@@ -469,12 +484,14 @@ class GravityApp {
   }
 
   showSettingsMainView() {
+    this.populateSettingsDrawer();
     const mainView = document.getElementById("settings-main-view");
     if (mainView) mainView.style.display = "block";
     document.querySelectorAll(".settings-detail-panel").forEach((p) => p.classList.remove("active"));
   }
 
   showSettingsPanel(panelId) {
+    this.populateSettingsDrawer();
     const mainView = document.getElementById("settings-main-view");
     if (mainView) mainView.style.display = "none";
     document.querySelectorAll(".settings-detail-panel").forEach((p) => p.classList.remove("active"));
@@ -484,11 +501,37 @@ class GravityApp {
 
   setupEventListeners() {
 
-    // Search / Filter Input
+    // Main Sidebar Search / Filter Input
     const searchInput = document.getElementById("search-chats-input");
-    searchInput.addEventListener("input", (e) => {
-      this.filterConversations(e.target.value.trim().toLowerCase());
-    });
+    if (searchInput) {
+      searchInput.addEventListener("input", (e) => {
+        this.handleSidebarSearch(e.target.value);
+      });
+    }
+
+    // New Contact Modal Real-Time Database Search Input
+    const inputSearchDir = document.getElementById("input-search-directory");
+    if (inputSearchDir) {
+      inputSearchDir.addEventListener("input", (e) => {
+        const query = e.target.value.trim();
+        clearTimeout(this.contactSearchDebounce);
+        this.contactSearchDebounce = setTimeout(() => {
+          this.searchDirectoryUsers(query);
+        }, 250);
+      });
+    }
+
+    // Group Member Search Input
+    const inputSearchGroup = document.getElementById("input-search-group-members");
+    if (inputSearchGroup) {
+      inputSearchGroup.addEventListener("input", (e) => {
+        const query = e.target.value.trim();
+        clearTimeout(this.groupSearchDebounce);
+        this.groupSearchDebounce = setTimeout(() => {
+          this.searchGroupMembers(query);
+        }, 250);
+      });
+    }
 
     // Filter Chips
     document.querySelectorAll(".filter-chip").forEach((chip) => {
@@ -496,13 +539,21 @@ class GravityApp {
         document.querySelectorAll(".filter-chip").forEach((c) => c.classList.remove("active"));
         chip.classList.add("active");
         this.currentFilter = chip.getAttribute("data-filter");
-        this.filterConversations(searchInput.value.trim().toLowerCase());
+        if (searchInput) {
+          this.filterConversations(searchInput.value.trim().toLowerCase());
+        }
       });
     });
 
     // New Direct Chat Modal Trigger
     const handleNewChatClick = async () => {
-      document.getElementById("modal-new-chat").classList.add("active");
+      const modal = document.getElementById("modal-new-chat");
+      if (modal) modal.classList.add("active");
+      const input = document.getElementById("input-search-directory");
+      if (input) {
+        input.value = "";
+        setTimeout(() => input.focus(), 150);
+      }
       await this.loadDirectoryUsers();
     };
 
@@ -514,8 +565,14 @@ class GravityApp {
 
     // New Group Chat Modal Triggers
     const handleNewGroupClick = async () => {
-      document.getElementById("modal-new-group").classList.add("active");
+      const modal = document.getElementById("modal-new-group");
+      if (modal) modal.classList.add("active");
       this.selectedGroupMembers.clear();
+      const input = document.getElementById("input-search-group-members");
+      if (input) {
+        input.value = "";
+        setTimeout(() => input.focus(), 150);
+      }
       await this.loadGroupSelectionUsers();
     };
 
@@ -594,9 +651,19 @@ class GravityApp {
       this.sendMessage();
     });
 
-    // Mobile Back Button
-    document.getElementById("btn-back-to-sidebar").addEventListener("click", () => {
-      document.body.classList.remove("chat-open");
+    // Mobile & Tablet Back Button to return to Sidebar
+    const btnBack = document.getElementById("btn-back-to-sidebar");
+    if (btnBack) {
+      btnBack.addEventListener("click", () => {
+        document.body.classList.remove("chat-open");
+      });
+    }
+
+    // Handle dynamic viewport resize
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 768 && !this.activeConversation) {
+        document.body.classList.remove("chat-open");
+      }
     });
 
     // Attachments Menu Toggle
@@ -926,18 +993,123 @@ class GravityApp {
     });
   }
 
+  handleSidebarSearch(rawQuery) {
+    const query = (rawQuery || "").trim().toLowerCase();
+    this.filterConversations(query);
+
+    // Remove any previous global results section
+    const existingSection = document.getElementById("global-search-section");
+    if (existingSection) existingSection.remove();
+
+    clearTimeout(this.sidebarSearchDebounce);
+    if (query.length === 0) return;
+
+    this.sidebarSearchDebounce = setTimeout(async () => {
+      try {
+        const users = await api.searchUsers(query);
+        // Exclude users already present in open 1-on-1 conversations
+        const currentUserId = auth.currentUser ? auth.currentUser.id : null;
+        const open1on1UserIds = new Set(
+          this.conversations
+            .filter((c) => !c.is_group && c.participants)
+            .map((c) => {
+              const other = c.participants.find((p) => p.user_id !== currentUserId);
+              return other ? other.user_id : null;
+            })
+            .filter(Boolean)
+        );
+
+        const newContacts = users.filter((u) => !open1on1UserIds.has(u.id));
+        if (newContacts.length === 0) return;
+
+        const listEl = document.getElementById("conversation-list");
+        if (!listEl) return;
+
+        // Check if global section is already present
+        const currentGlobal = document.getElementById("global-search-section");
+        if (currentGlobal) currentGlobal.remove();
+
+        const section = document.createElement("div");
+        section.id = "global-search-section";
+        section.className = "global-search-container";
+        section.innerHTML = `
+          <div class="global-search-header">
+            <span>Global Contacts (${newContacts.length})</span>
+          </div>
+          <div class="global-search-list">
+            ${newContacts.map((u) => `
+              <div class="global-search-item" data-user-id="${u.id}">
+                <div class="avatar-wrapper" style="width:36px; height:36px;">
+                  <img src="${u.avatar_url || "assets/default-avatar.svg"}" class="avatar-img" alt="${UI.escapeHtml(u.full_name || u.username)}">
+                  ${u.is_online ? '<span class="status-dot"></span>' : ''}
+                </div>
+                <div class="global-search-info">
+                  <div class="global-search-title-row">
+                    <span class="global-search-title">${UI.escapeHtml(u.full_name || u.username)}</span>
+                    <span class="user-id-badge">ID: #${u.id}</span>
+                  </div>
+                  <div class="global-search-snippet">
+                    ${UI.escapeHtml(u.phone_or_email)}
+                  </div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+
+        section.querySelectorAll(".global-search-item").forEach((item) => {
+          item.addEventListener("click", async () => {
+            const uid = item.getAttribute("data-user-id");
+            try {
+              UI.showToast("Starting chat...");
+              const conv = await api.createDirectConversation(uid);
+              const sInput = document.getElementById("search-chats-input");
+              if (sInput) sInput.value = "";
+              section.remove();
+              await this.loadConversations();
+              this.selectConversation(conv.id);
+            } catch (err) {
+              UI.showToast(`Error starting chat: ${err.message}`);
+            }
+          });
+        });
+
+        listEl.appendChild(section);
+      } catch (err) {
+        console.warn("Sidebar database search error:", err);
+      }
+    }, 300);
+  }
+
   filterConversations(query) {
     const listEl = document.getElementById("conversation-list");
+    if (!listEl) return;
     const items = listEl.querySelectorAll(".chat-item");
+    let visibleCount = 0;
     items.forEach((item) => {
-      const title = item.querySelector(".chat-item-title").textContent.toLowerCase();
-      const snippet = item.querySelector(".chat-item-snippet").textContent.toLowerCase();
-      if (title.includes(query) || snippet.includes(query)) {
+      const title = item.querySelector(".chat-item-title")?.textContent.toLowerCase() || "";
+      const snippet = item.querySelector(".chat-item-snippet")?.textContent.toLowerCase() || "";
+      if (!query || title.includes(query) || snippet.includes(query)) {
         item.style.display = "flex";
+        visibleCount++;
       } else {
         item.style.display = "none";
       }
     });
+
+    const emptyExisting = listEl.querySelector(".empty-chat-list");
+    if (emptyExisting) emptyExisting.remove();
+
+    if (visibleCount === 0 && query && !document.getElementById("global-search-section")) {
+      const emptyDiv = document.createElement("div");
+      emptyDiv.className = "empty-chat-list";
+      emptyDiv.style.cssText = "display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px 16px; text-align:center; color:var(--text-muted);";
+      emptyDiv.innerHTML = `
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:8px; opacity:0.6;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <p style="font-size:13px;">No active conversations match "<strong>${UI.escapeHtml(query)}</strong>"</p>
+      `;
+      listEl.prepend(emptyDiv);
+    }
   }
 
   async selectConversation(conversationId) {
@@ -1104,71 +1276,206 @@ class GravityApp {
 
   async loadDirectoryUsers() {
     const listEl = document.getElementById("directory-user-list");
-    listEl.innerHTML = `<div style="text-align:center; padding:10px; color:var(--text-muted);">Loading contacts...</div>`;
+    if (!listEl) return;
+    listEl.innerHTML = `
+      <div class="search-loading-state">
+        <div class="spinner-sm"></div>
+        <span>Loading contacts from database...</span>
+      </div>
+    `;
     try {
       const users = await api.getDirectory();
+      this.directoryUsers = users;
+      this.renderDirectoryUserList(users, listEl);
+    } catch (err) {
+      listEl.innerHTML = `<p style="color:var(--accent-danger); text-align:center; padding:16px;">Failed to load contacts: ${UI.escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  async searchDirectoryUsers(query) {
+    const listEl = document.getElementById("directory-user-list");
+    if (!listEl) return;
+
+    if (!query || query.trim().length === 0) {
+      return this.loadDirectoryUsers();
+    }
+
+    const trimmed = query.trim();
+    listEl.innerHTML = `
+      <div class="search-loading-state">
+        <div class="spinner-sm"></div>
+        <span>Searching database for "<strong>${UI.escapeHtml(trimmed)}</strong>"...</span>
+      </div>
+    `;
+
+    try {
+      const users = await api.searchUsers(trimmed);
       if (users.length === 0) {
-        listEl.innerHTML = `<p style="text-align:center; color:var(--text-muted);">No other users found</p>`;
+        listEl.innerHTML = `
+          <div class="empty-search-state">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <p>No users found for "<strong>${UI.escapeHtml(trimmed)}</strong>"</p>
+            <span class="empty-hint">Search by exact User ID (e.g. 1, 2), Email address, or Username</span>
+          </div>
+        `;
         return;
       }
+      this.renderDirectoryUserList(users, listEl);
+    } catch (err) {
+      listEl.innerHTML = `<p style="color:var(--accent-danger); text-align:center; padding:16px;">Search failed: ${UI.escapeHtml(err.message)}</p>`;
+    }
+  }
 
-      listEl.innerHTML = users.map((u) => `
+  renderDirectoryUserList(users, listEl) {
+    if (!users || users.length === 0) {
+      listEl.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px;">No other users found in database</p>`;
+      return;
+    }
+
+    listEl.innerHTML = users.map((u) => {
+      const displayName = u.full_name || u.username;
+      const email = u.phone_or_email || "";
+      const statusBio = u.status_bio || "Available";
+      const isOnline = !!u.is_online;
+
+      return `
         <div class="user-select-item" data-user-id="${u.id}">
-          <div class="avatar-wrapper" style="width:36px; height:36px;">
-            <img src="${u.avatar_url || "assets/default-avatar.svg"}" class="avatar-img">
+          <div class="avatar-wrapper" style="width:40px; height:40px; min-width:40px;">
+            <img src="${u.avatar_url || "assets/default-avatar.svg"}" class="avatar-img" alt="${UI.escapeHtml(displayName)}">
+            ${isOnline ? '<span class="status-dot"></span>' : ''}
           </div>
-          <div style="flex:1;">
-            <div style="font-weight:500; font-size:14px;">${UI.escapeHtml(u.full_name || u.username)}</div>
-            <div style="font-size:12px; color:var(--text-secondary);">${UI.escapeHtml(u.status_bio || "")}</div>
+          <div class="user-select-info">
+            <div class="user-select-header">
+              <span class="user-select-name">${UI.escapeHtml(displayName)}</span>
+              <span class="user-id-badge">ID: #${u.id}</span>
+            </div>
+            <div class="user-select-subtitle">
+              <span class="user-email-text">${UI.escapeHtml(email)}</span>
+              <span class="user-bio-sep">•</span>
+              <span class="user-bio-text">${UI.escapeHtml(statusBio)}</span>
+            </div>
           </div>
         </div>
-      `).join("");
+      `;
+    }).join("");
 
-      listEl.querySelectorAll(".user-select-item").forEach((el) => {
-        el.addEventListener("click", async () => {
-          const uid = el.getAttribute("data-user-id");
-          document.getElementById("modal-new-chat").classList.remove("active");
+    listEl.querySelectorAll(".user-select-item").forEach((el) => {
+      el.addEventListener("click", async () => {
+        const uid = el.getAttribute("data-user-id");
+        document.getElementById("modal-new-chat")?.classList.remove("active");
+        try {
+          UI.showToast("Opening conversation...");
           const conv = await api.createDirectConversation(uid);
           await this.loadConversations();
           this.selectConversation(conv.id);
-        });
+        } catch (err) {
+          UI.showToast(`Failed to start conversation: ${err.message}`);
+        }
       });
-    } catch (err) {
-      listEl.innerHTML = `<p style="color:var(--accent-danger); text-align:center;">Failed to load contacts</p>`;
-    }
+    });
   }
 
   async loadGroupSelectionUsers() {
     const listEl = document.getElementById("group-member-select-list");
-    listEl.innerHTML = `<div style="text-align:center; padding:10px; color:var(--text-muted);">Loading contacts...</div>`;
+    if (!listEl) return;
+    listEl.innerHTML = `
+      <div class="search-loading-state">
+        <div class="spinner-sm"></div>
+        <span>Loading contacts from database...</span>
+      </div>
+    `;
     try {
       const users = await api.getDirectory();
-      listEl.innerHTML = users.map((u) => `
-        <div class="user-select-item" data-user-id="${u.id}">
-          <div class="avatar-wrapper" style="width:36px; height:36px;">
-            <img src="${u.avatar_url || "assets/default-avatar.svg"}" class="avatar-img">
+      this.groupUsers = users;
+      this.renderGroupUserList(users, listEl);
+    } catch (err) {
+      listEl.innerHTML = `<p style="color:var(--accent-danger); text-align:center; padding:16px;">Failed to load contacts: ${UI.escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  async searchGroupMembers(query) {
+    const listEl = document.getElementById("group-member-select-list");
+    if (!listEl) return;
+
+    if (!query || query.trim().length === 0) {
+      return this.loadGroupSelectionUsers();
+    }
+
+    const trimmed = query.trim();
+    listEl.innerHTML = `
+      <div class="search-loading-state">
+        <div class="spinner-sm"></div>
+        <span>Searching members for "<strong>${UI.escapeHtml(trimmed)}</strong>"...</span>
+      </div>
+    `;
+
+    try {
+      const users = await api.searchUsers(trimmed);
+      if (users.length === 0) {
+        listEl.innerHTML = `
+          <div class="empty-search-state">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <p>No members found for "<strong>${UI.escapeHtml(trimmed)}</strong>"</p>
           </div>
-          <div style="flex:1;">
-            <div style="font-weight:500; font-size:14px;">${UI.escapeHtml(u.full_name || u.username)}</div>
+        `;
+        return;
+      }
+      this.renderGroupUserList(users, listEl);
+    } catch (err) {
+      listEl.innerHTML = `<p style="color:var(--accent-danger); text-align:center; padding:16px;">Search failed: ${UI.escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  renderGroupUserList(users, listEl) {
+    if (!users || users.length === 0) {
+      listEl.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px;">No users found</p>`;
+      return;
+    }
+
+    listEl.innerHTML = users.map((u) => {
+      const isSelected = this.selectedGroupMembers.has(String(u.id)) || this.selectedGroupMembers.has(Number(u.id));
+      const displayName = u.full_name || u.username;
+      const email = u.phone_or_email || "";
+      const isOnline = !!u.is_online;
+
+      return `
+        <div class="user-select-item ${isSelected ? "selected" : ""}" data-user-id="${u.id}">
+          <div class="avatar-wrapper" style="width:40px; height:40px; min-width:40px;">
+            <img src="${u.avatar_url || "assets/default-avatar.svg"}" class="avatar-img" alt="${UI.escapeHtml(displayName)}">
+            ${isOnline ? '<span class="status-dot"></span>' : ''}
+          </div>
+          <div class="user-select-info">
+            <div class="user-select-header">
+              <span class="user-select-name">${UI.escapeHtml(displayName)}</span>
+              <span class="user-id-badge">ID: #${u.id}</span>
+            </div>
+            <div class="user-select-subtitle">
+              <span class="user-email-text">${UI.escapeHtml(email)}</span>
+            </div>
+          </div>
+          <div class="selection-checkbox ${isSelected ? "checked" : ""}">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
         </div>
-      `).join("");
+      `;
+    }).join("");
 
-      listEl.querySelectorAll(".user-select-item").forEach((el) => {
-        el.addEventListener("click", () => {
-          const uid = el.getAttribute("data-user-id");
-          if (this.selectedGroupMembers.has(uid)) {
-            this.selectedGroupMembers.delete(uid);
-            el.classList.remove("selected");
-          } else {
-            this.selectedGroupMembers.add(uid);
-            el.classList.add("selected");
-          }
-        });
+    listEl.querySelectorAll(".user-select-item").forEach((el) => {
+      el.addEventListener("click", () => {
+        const uid = el.getAttribute("data-user-id");
+        const numericUid = Number(uid) || uid;
+        if (this.selectedGroupMembers.has(uid) || this.selectedGroupMembers.has(numericUid)) {
+          this.selectedGroupMembers.delete(uid);
+          this.selectedGroupMembers.delete(numericUid);
+          el.classList.remove("selected");
+          el.querySelector(".selection-checkbox")?.classList.remove("checked");
+        } else {
+          this.selectedGroupMembers.add(numericUid);
+          el.classList.add("selected");
+          el.querySelector(".selection-checkbox")?.classList.add("checked");
+        }
       });
-    } catch (err) {
-      listEl.innerHTML = `<p style="color:var(--accent-danger); text-align:center;">Failed to load contacts</p>`;
-    }
+    });
   }
 }
 

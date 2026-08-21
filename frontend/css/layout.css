@@ -25,11 +25,12 @@ body {
   max-height: 100vh;
   position: relative;
   overflow: hidden;
+  background-color: var(--bg-app);
 }
 
 /* 1. Left Side Rail (Profile & Action Dock) */
 .left-rail {
-  width: 62px;
+  width: var(--rail-width, 64px);
   height: 100%;
   background-color: var(--bg-sidebar-header);
   border-right: 1px solid var(--border-subtle);
@@ -37,17 +38,18 @@ body {
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 0;
+  padding: 12px 0;
   z-index: 25;
   flex-shrink: 0;
   user-select: none;
+  transition: width var(--transition-normal), transform var(--transition-normal);
 }
 
 .rail-top-section, .rail-bottom-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
 }
 
@@ -59,11 +61,11 @@ body {
   position: relative;
   outline: none;
   border-radius: 50%;
-  transition: transform var(--transition-fast);
+  transition: transform var(--transition-fast), filter var(--transition-fast);
 }
 
 .rail-profile-btn:hover {
-  transform: scale(1.05);
+  transform: scale(1.08);
 }
 
 .rail-avatar-wrapper {
@@ -74,11 +76,12 @@ body {
   overflow: hidden;
   background-color: #374248;
   border: 2px solid transparent;
-  transition: border-color var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .rail-profile-btn:hover .rail-avatar-wrapper {
   border-color: var(--accent-primary);
+  box-shadow: 0 0 10px rgba(0, 168, 132, 0.4);
 }
 
 .rail-avatar-img {
@@ -107,41 +110,52 @@ body {
   color: var(--text-secondary);
   width: 42px;
   height: 42px;
-  border-radius: 50%;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .rail-action-btn:hover {
   background-color: var(--bg-hover);
   color: var(--text-primary);
+  transform: scale(1.06);
+}
+
+.rail-action-btn:active {
+  transform: scale(0.95);
 }
 
 .rail-action-btn.active {
-  background-color: rgba(233, 237, 239, 0.12);
+  background-color: rgba(0, 168, 132, 0.16);
   color: var(--accent-primary);
-  border-radius: 20px;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(0, 168, 132, 0.3);
 }
 
 [data-theme="light"] .rail-action-btn.active {
-  background-color: rgba(0, 0, 0, 0.08);
-  color: #111b21;
+  background-color: rgba(0, 168, 132, 0.15);
+  color: var(--accent-primary);
 }
 
 .rail-action-btn svg {
   width: 20px;
   height: 20px;
   fill: currentColor;
+  transition: transform var(--transition-fast);
+}
+
+.rail-action-btn:hover svg {
+  transform: scale(1.05);
 }
 
 /* 2. Left Sidebar Layout (Chats Pane) */
 .sidebar {
   width: var(--sidebar-width);
-  min-width: 320px;
-  max-width: 440px;
+  min-width: 300px;
+  max-width: 460px;
   height: 100%;
   background-color: var(--bg-sidebar);
   border-right: 1px solid var(--border-subtle);
@@ -150,6 +164,7 @@ body {
   position: relative;
   z-index: 10;
   flex-shrink: 0;
+  transition: width var(--transition-normal);
 }
 
 /* 3. Right Main Chat Viewport Layout */
@@ -161,6 +176,7 @@ body {
   flex-direction: column;
   position: relative;
   min-width: 0;
+  overflow: hidden;
 }
 
 /* Custom Scrollbars */
@@ -175,14 +191,41 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: rgba(134, 150, 160, 0.25);
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(134, 150, 160, 0.4);
+  background: rgba(134, 150, 160, 0.45);
 }
 
-/* Responsive Mobile Rules */
+/* ========================================================= */
+/* RESPONSIVE BREAKPOINTS                                   */
+/* ========================================================= */
+
+/* Large screens (>= 1440px) */
+@media (min-width: 1440px) {
+  .sidebar {
+    width: clamp(380px, 28vw, 480px);
+    max-width: 480px;
+  }
+}
+
+/* Tablet screens (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .left-rail {
+    width: 56px;
+  }
+  .rail-action-btn {
+    width: 38px;
+    height: 38px;
+  }
+  .sidebar {
+    width: clamp(280px, 35vw, 340px);
+    min-width: 280px;
+  }
+}
+
+/* Mobile Screens (<= 768px) */
 @media (max-width: 768px) {
   .left-rail {
     display: none;
@@ -190,21 +233,37 @@ body {
   .sidebar {
     width: 100%;
     max-width: 100%;
+    min-width: 100%;
     display: flex;
+    transition: opacity var(--transition-normal);
   }
   .chat-viewport {
     display: none;
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 30;
+    width: 100vw;
+    height: 100vh;
+    z-index: 50;
+    background-color: var(--bg-chat);
   }
   body.chat-open .sidebar {
     display: none;
   }
   body.chat-open .chat-viewport {
     display: flex;
+    animation: slideInRightMobile 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
+
+@keyframes slideInRightMobile {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+

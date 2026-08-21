@@ -29,7 +29,7 @@ A high-performance, real-time messaging web application inspired by WhatsApp Web
 ## 🏗️ Project Structure
 
 ```
-WhatsApp/
+Gravity/
 ├── run.py                      # One-command server runner
 ├── backend/
 │   ├── app/
@@ -94,5 +94,5 @@ You can use the instant quick-login buttons on the login modal:
 
 ## 🧪 Running Automated Tests
 ```bash
-$env:PYTHONPATH="c:\GMCH Intern\WhatsApp\backend"; python -m pytest backend/tests/test_api_and_ws.py -v
+$env:PYTHONPATH="c:\GMCH Intern\Gravity\backend"; python -m pytest backend/tests/test_api_and_ws.py -v
 ```
